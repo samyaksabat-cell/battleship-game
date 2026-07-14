@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Battleship Game</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Battleship</h1>
+        
+        <div id="setup-screen" class="screen">
+            <h2>Place Your Ships</h2>
+            <div class="setup-instructions">
+                <p>Click on your grid to place ships. Ships can be placed horizontally or vertically.</p>
+                <p>Ships to place: Carrier (5), Battleship (4), Cruiser (3), Submarine (3), Destroyer (2)</p>
+            </div>
+            <div class="game-boards">
+                <div class="board-container">
+                    <h3>Your Fleet</h3>
+                    <div id="player-grid" class="grid"></div>
+                </div>
+            </div>
+            <div class="setup-controls">
+                <button id="randomize-btn" class="btn">Randomize Placement</button>
+                <button id="start-game-btn" class="btn btn-primary" disabled>Start Game</button>
+            </div>
+            <div id="current-ship" class="current-ship">Current Ship: Carrier (5 cells)</div>
+        </div>
+
+        <div id="game-screen" class="screen hidden">
+            <div class="game-info">
+                <div class="turn-indicator" id="turn-indicator">Your Turn</div>
+                <div class="score">
+                    <span>Your Ships: <span id="player-ships-left">5</span></span>
+                    <span>AI Ships: <span id="ai-ships-left">5</span></span>
+                </div>
+            </div>
+            <div class="game-boards">
+                <div class="board-container">
+                    <h3>Your Fleet</h3>
+                    <div id="player-grid-game" class="grid"></div>
+                </div>
+                <div class="board-container">
+                    <h3>Enemy Waters</h3>
+                    <div id="ai-grid" class="grid"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="game-over-screen" class="screen hidden">
+            <h2 id="game-over-title">Game Over</h2>
+            <p id="game-over-message"></p>
+            <button id="play-again-btn" class="btn btn-primary">Play Again</button>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>

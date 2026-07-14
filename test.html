@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Battleship Test</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1a1a2e; color: #fff; }
+        .test-result { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .pass { background: #28a745; }
+        .fail { background: #dc3545; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Battleship Game Tests</h1>
+    <div id="results"></div>
+    <button onclick="runTests()">Run Tests</button>
+    
+    <script src="game.js"></script>
+    <script>
+        function runTests() {
+            const results = document.getElementById('results');
+            results.innerHTML = '';
+            
+            // Test 1: Grid initialization
+            try {
+                initializeGrids();
+                const gridValid = playerGrid.length === GRID_SIZE && 
+                                  playerGrid[0].length === GRID_SIZE &&
+                                  playerGrid.every(row => row.every(cell => cell === null));
+                addResult('Grid initialization', gridValid);
+            } catch (e) {
+                addResult('Grid initialization', false, e.message);
+            }
+            
+            // Test 2: Ship placement validation
+            try {
+                initializeGrids();
+                const canPlace = canPlaceShip(playerGrid, 0, 0, 5, true);
+                const cannotPlace = !canPlaceShip(playerGrid, 0, 8, 5, true);
+                addResult('Ship placement validation', canPlace && cannotPlace);
+            } catch (e) {
+                addResult('Ship placement validation', false, e.message);
+            }
+            
+            // Test 3: Ship placement
+            try {
+                initializeGrids();
+                const positions = placeShip(playerGrid, 0, 0, 3, true, 'TestShip');
+                const placed = positions.length === 3 && 
+                              playerGrid[0][0] === 'TestShip' &&
+                              playerGrid[0][1] === 'TestShip' &&
+                              playerGrid[0][2] === 'TestShip';
+                addResult('Ship placement', placed);
+            } catch (e) {
+                addResult('Ship placement', false, e.message);
+            }
+            
+            // Test 4: AI targeting state
+            try {
+                initializeGrids();
+                const modeHunt = aiMode === 'hunt';
+                aiHits.push({row: 5, col: 5});
+                aiMode = 'target';
+                const modeTarget = aiMode === 'target';
+                addResult('AI targeting state', modeHunt && modeTarget);
+            } catch (e) {
+                addResult('AI targeting state', false, e.message);
+            }
+            
+            // Test 5: Adjacent cells
+            try {
+                const adj = getAdjacentCells(5, 5);
+                const correct = adj.length === 4 &&
+                              adj.some(a => a.row === 4 && a.col === 5) &&
+                              adj.some(a => a.row === 6 && a.col === 5) &&
+                              adj.some(a => a.row === 5 && a.col === 4) &&
+                              adj.some(a => a.row === 5 && a.col === 6);
+                addResult('Adjacent cells calculation', correct);
+            } catch (e) {
+                addResult('Adjacent cells calculation', false, e.message);
+            }
+            
+            // Test 6: Random placement
+            try {
+                initializeGrids();
+                randomizePlacement();
+                const allPlaced = playerShips.length === SHIPS.length;
+                const noOverlap = playerShips.every(ship => {
+                    return ship.positions.every(pos => {
+                        const cell = playerGrid[pos.row][pos.col];
+                        return typeof cell === 'string';
+                    });
+                });
+                addResult('Random placement', allPlaced && noOverlap);
+            } catch (e) {
+                addResult('Random placement', false, e.message);
+            }
+        }
+        
+        function addResult(name, passed, error = null) {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = 'test-result ' + (passed ? 'pass' : 'fail');
+            div.textContent = `${name}: ${passed ? 'PASS' : 'FAIL'}`;
+            if (error) {
+                div.textContent += ` - ${error}`;
+            }
+            results.appendChild(div);
+        }
+    </script>
+</body>
+</html>

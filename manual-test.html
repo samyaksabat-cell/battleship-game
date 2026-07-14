@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Battleship Manual Test</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1a1a2e; color: #fff; }
+        .instructions { background: rgba(255,255,255,0.1); padding: 15px; margin: 20px 0; border-radius: 5px; }
+        .step { margin: 10px 0; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 3px; }
+        .step h3 { color: #00d4ff; margin-bottom: 5px; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; background: #00d4ff; border: none; border-radius: 5px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>Battleship Manual Test Guide</h1>
+    
+    <div class="instructions">
+        <h2>How to Test the Game</h2>
+        <p>Open the main game (index.html) and follow these steps:</p>
+    </div>
+    
+    <div class="step">
+        <h3>Step 1: Ship Placement</h3>
+        <p>- Click "Randomize Placement" to auto-place ships</p>
+        <p>- Or manually click on the grid to place ships</p>
+        <p>- Right-click to rotate ship orientation</p>
+        <p>- Click "Start Game" when all ships are placed</p>
+    </div>
+    
+    <div class="step">
+        <h3>Step 2: Player Turn</h3>
+        <p>- Click on the "Enemy Waters" grid to attack</p>
+        <p>- Red X = hit, White circle = miss</p>
+        <p>- Watch your ship count in the score display</p>
+    </div>
+    
+    <div class="step">
+        <h3>Step 3: AI Turn</h3>
+        <p>- AI will automatically attack after your turn</p>
+        <p>- AI uses hunt mode (random) until it hits, then target mode (adjacent cells)</p>
+        <p>- Watch your ships get hit on the "Your Fleet" grid</p>
+    </div>
+    
+    <div class="step">
+        <h3>Step 4: Game Over</h3>
+        <p>- Game ends when all ships of one player are sunk</p>
+        <p>- Click "Play Again" to restart</p>
+    </div>
+    
+    <div class="step">
+        <h3>Known Issues to Check</h3>
+        <p>- Ships don't overlap when placed manually</p>
+        <p>- AI doesn't fire on the same cell twice</p>
+        <p>- Game correctly detects when all ships are sunk</p>
+        <p>- Play Again button resets the game properly</p>
+    </div>
+    
+    <button onclick="window.open('index.html', '_blank')">Open Game</button>
+    
+    <div class="instructions" style="margin-top: 30px;">
+        <h2>Automated Tests</h2>
+        <p>Open test.html for automated unit tests of game logic</p>
+    </div>
+    
+    <button onclick="window.open('test.html', '_blank')">Run Automated Tests</button>
+</body>
+</html>
