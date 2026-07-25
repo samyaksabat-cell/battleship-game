@@ -17,11 +17,13 @@
     
     <div class="instructions">
         <h2>How to Test the Game</h2>
-        <p>Open the main game (index.html) and follow these steps:</p>
+        <p>The game loads ES modules, so serve the folder over HTTP (e.g. <code>npx serve .</code>) and open index.html from there.</p>
+        <p>Then follow these steps:</p>
     </div>
     
     <div class="step">
         <h3>Step 1: Ship Placement</h3>
+        <p>- Pick an AI difficulty (Easy / Medium / Hard) in the setup controls</p>
         <p>- Click "Randomize Placement" to auto-place ships</p>
         <p>- Or manually click on the grid to place ships</p>
         <p>- Right-click to rotate ship orientation</p>
@@ -38,14 +40,25 @@
     <div class="step">
         <h3>Step 3: AI Turn</h3>
         <p>- AI will automatically attack after your turn</p>
-        <p>- AI uses hunt mode (random) until it hits, then target mode (adjacent cells)</p>
+        <p>- Easy: fires at a random un-fired cell</p>
+        <p>- Medium: hunt mode (random) until it hits, then target mode (adjacent cells)</p>
+        <p>- Hard: probability density - it fires where the remaining ships fit most often</p>
         <p>- Watch your ships get hit on the "Your Fleet" grid</p>
+    </div>
+
+    <div class="step">
+        <h3>Step 3b: Show AI Reasoning (Hard only)</h3>
+        <p>- Tick "Show AI reasoning" during a Hard game</p>
+        <p>- Your fleet grid is tinted with the Hard AI's probability map, refreshed each turn</p>
+        <p>- Hits, misses and your ships stay visible underneath; unticking clears the tint</p>
+        <p>- With Easy or Medium selected a note explains the heatmap is Hard-only</p>
     </div>
     
     <div class="step">
-        <h3>Step 4: Game Over</h3>
+        <h3>Step 4: Game Over &amp; Analysis</h3>
         <p>- Game ends when all ships of one player are sunk</p>
-        <p>- Click "Play Again" to restart</p>
+        <p>- The post-game analysis shows your targeting efficiency and your three biggest missed opportunities</p>
+        <p>- Click "Play Again" to restart (difficulty, AI state and shot history all reset)</p>
     </div>
     
     <div class="step">
@@ -60,7 +73,7 @@
     
     <div class="instructions" style="margin-top: 30px;">
         <h2>Automated Tests</h2>
-        <p>Open test.html for automated unit tests of game logic</p>
+        <p>Open test.html for in-browser smoke tests, or run the full suite with <code>npm test</code></p>
     </div>
     
     <button onclick="window.open('test.html', '_blank')">Run Automated Tests</button>

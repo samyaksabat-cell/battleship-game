@@ -10,105 +10,118 @@
         .pass { background: #28a745; }
         .fail { background: #dc3545; }
         button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        .note { background: rgba(255,255,255,0.1); padding: 15px; border-radius: 5px; margin-bottom: 20px; }
     </style>
 </head>
 <body>
     <h1>Battleship Game Tests</h1>
+    <div class="note">
+        <p>Quick in-browser smoke tests of the pure game modules in <code>src/</code>.</p>
+        <p>The full suite (AI unit tests, 200-game difficulty simulations, post-game
+           analysis) runs in Node with <code>npm test</code>.</p>
+        <p>This page uses ES modules, so serve it over HTTP (e.g. <code>npx serve .</code>) rather than opening the file directly.</p>
+    </div>
     <div id="results"></div>
-    <button onclick="runTests()">Run Tests</button>
-    
-    <script src="game.js"></script>
-    <script>
+    <button id="run-btn">Run Tests</button>
+
+    <script type="module">
+        import { GRID_SIZE, SHIPS } from './src/constants.js';
+        import { canPlaceShip, createGrid, createRandomFleet, getAdjacentCells, placeShip } from './src/board.js';
+        import { createRng } from './src/rng.js';
+        import { createKnowledge, recordShot } from './src/ai/knowledge.js';
+        import { createAI } from './src/ai/index.js';
+        import { computeProbabilityMap } from './src/ai/hard.js';
+        import { analyzeShots } from './src/analysis.js';
+
         function runTests() {
-            const results = document.getElementById('results');
-            results.innerHTML = '';
-            
-            // Test 1: Grid initialization
-            try {
-                initializeGrids();
-                const gridValid = playerGrid.length === GRID_SIZE && 
-                                  playerGrid[0].length === GRID_SIZE &&
-                                  playerGrid.every(row => row.every(cell => cell === null));
-                addResult('Grid initialization', gridValid);
-            } catch (e) {
-                addResult('Grid initialization', false, e.message);
-            }
-            
-            // Test 2: Ship placement validation
-            try {
-                initializeGrids();
-                const canPlace = canPlaceShip(playerGrid, 0, 0, 5, true);
-                const cannotPlace = !canPlaceShip(playerGrid, 0, 8, 5, true);
-                addResult('Ship placement validation', canPlace && cannotPlace);
-            } catch (e) {
-                addResult('Ship placement validation', false, e.message);
-            }
-            
-            // Test 3: Ship placement
-            try {
-                initializeGrids();
-                const positions = placeShip(playerGrid, 0, 0, 3, true, 'TestShip');
-                const placed = positions.length === 3 && 
-                              playerGrid[0][0] === 'TestShip' &&
-                              playerGrid[0][1] === 'TestShip' &&
-                              playerGrid[0][2] === 'TestShip';
-                addResult('Ship placement', placed);
-            } catch (e) {
-                addResult('Ship placement', false, e.message);
-            }
-            
-            // Test 4: AI targeting state
-            try {
-                initializeGrids();
-                const modeHunt = aiMode === 'hunt';
-                aiHits.push({row: 5, col: 5});
-                aiMode = 'target';
-                const modeTarget = aiMode === 'target';
-                addResult('AI targeting state', modeHunt && modeTarget);
-            } catch (e) {
-                addResult('AI targeting state', false, e.message);
-            }
-            
-            // Test 5: Adjacent cells
-            try {
-                const adj = getAdjacentCells(5, 5);
-                const correct = adj.length === 4 &&
-                              adj.some(a => a.row === 4 && a.col === 5) &&
-                              adj.some(a => a.row === 6 && a.col === 5) &&
-                              adj.some(a => a.row === 5 && a.col === 4) &&
-                              adj.some(a => a.row === 5 && a.col === 6);
-                addResult('Adjacent cells calculation', correct);
-            } catch (e) {
-                addResult('Adjacent cells calculation', false, e.message);
-            }
-            
-            // Test 6: Random placement
-            try {
-                initializeGrids();
-                randomizePlacement();
-                const allPlaced = playerShips.length === SHIPS.length;
-                const noOverlap = playerShips.every(ship => {
-                    return ship.positions.every(pos => {
-                        const cell = playerGrid[pos.row][pos.col];
-                        return typeof cell === 'string';
-                    });
-                });
-                addResult('Random placement', allPlaced && noOverlap);
-            } catch (e) {
-                addResult('Random placement', false, e.message);
-            }
+            document.getElementById('results').innerHTML = '';
+
+            test('Grid initialization', () => {
+                const grid = createGrid(GRID_SIZE);
+                return grid.length === GRID_SIZE &&
+                       grid.every(row => row.length === GRID_SIZE && row.every(cell => cell === null));
+            });
+
+            test('Ship placement validation', () => {
+                const grid = createGrid(GRID_SIZE);
+                return canPlaceShip(grid, 0, 0, 5, true) && !canPlaceShip(grid, 0, 8, 5, true);
+            });
+
+            test('Ship placement', () => {
+                const grid = createGrid(GRID_SIZE);
+                const positions = placeShip(grid, 0, 0, 3, true, 'TestShip');
+                return positions.length === 3 && grid[0][0] === 'TestShip' && grid[0][2] === 'TestShip';
+            });
+
+            test('Adjacent cells calculation', () => getAdjacentCells(5, 5).length === 4);
+
+            test('Random placement', () => {
+                const fleet = createRandomFleet(createRng(1));
+                return fleet.ships.length === SHIPS.length &&
+                       fleet.ships.every(ship => ship.positions.every(p => fleet.grid[p.row][p.col] === ship.name));
+            });
+
+            test('Easy AI never repeats a cell', () => {
+                const knowledge = createKnowledge();
+                const ai = createAI('easy', createRng(2));
+                const seen = new Set();
+                for (let i = 0; i < 100; i++) {
+                    const move = ai.nextMove(knowledge);
+                    if (seen.has(`${move.row},${move.col}`)) return false;
+                    seen.add(`${move.row},${move.col}`);
+                    recordShot(knowledge, { row: move.row, col: move.col, hit: false });
+                }
+                return seen.size === 100;
+            });
+
+            test('Medium AI targets adjacent cells after a hit', () => {
+                const knowledge = createKnowledge();
+                const ai = createAI('medium', createRng(3));
+                const hit = { row: 4, col: 4, hit: true };
+                recordShot(knowledge, hit);
+                ai.onShotResult(knowledge, hit);
+                const move = ai.nextMove(knowledge);
+                return getAdjacentCells(4, 4).some(c => c.row === move.row && c.col === move.col);
+            });
+
+            test('Hard AI boosts cells around an unresolved hit', () => {
+                const knowledge = createKnowledge();
+                recordShot(knowledge, { row: 5, col: 5, hit: true });
+                const map = computeProbabilityMap(knowledge);
+                return map[4][5] > map[1][1] && map[5][5] === 0;
+            });
+
+            test('Post-game analysis scores a shot history', () => {
+                const { efficiency, turns } = analyzeShots([
+                    { row: 4, col: 4, hit: true },
+                    { row: 9, col: 0, hit: false }
+                ]);
+                return turns.length === 2 && efficiency > 0 && efficiency <= 100;
+            });
         }
-        
+
+        function test(name, fn) {
+            let passed = false;
+            let error = null;
+            try {
+                passed = fn() === true;
+            } catch (e) {
+                error = e.message;
+            }
+            addResult(name, passed, error);
+        }
+
         function addResult(name, passed, error = null) {
             const results = document.getElementById('results');
             const div = document.createElement('div');
             div.className = 'test-result ' + (passed ? 'pass' : 'fail');
             div.textContent = `${name}: ${passed ? 'PASS' : 'FAIL'}`;
-            if (error) {
-                div.textContent += ` - ${error}`;
-            }
+            if (error) div.textContent += ` - ${error}`;
             results.appendChild(div);
         }
+
+        document.getElementById('run-btn').addEventListener('click', runTests);
+        runTests();
     </script>
 </body>
 </html>

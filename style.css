@@ -136,6 +136,8 @@ h3 {
     display: flex;
     gap: 15px;
     justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
 }
 
 .btn {
@@ -224,6 +226,172 @@ h3 {
     font-size: 1.2rem;
     margin-bottom: 30px;
     color: #7dd3fc;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.difficulty-control {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: bold;
+    color: #7dd3fc;
+}
+
+.difficulty-control select {
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    border: 2px solid rgba(0, 212, 255, 0.5);
+    font-size: 0.95rem;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.difficulty-control option {
+    background: #16213e;
+    color: #fff;
+}
+
+.heatmap-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #7dd3fc;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.toggle input {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: #00d4ff;
+}
+
+.heatmap-legend {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    color: #7dd3fc;
+}
+
+.heatmap-legend .swatch {
+    width: 24px;
+    height: 16px;
+    border-radius: 3px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.heatmap-note {
+    font-size: 0.85rem;
+    color: #ffb26b;
+}
+
+/* Heatmap tint is painted as a background image layer so the underlying
+   ship / hit / miss background colour stays visible. */
+.heat-1 {
+    background-image: linear-gradient(rgba(255, 224, 130, 0.14), rgba(255, 224, 130, 0.14));
+}
+
+.heat-2 {
+    background-image: linear-gradient(rgba(255, 196, 84, 0.26), rgba(255, 196, 84, 0.26));
+}
+
+.heat-3 {
+    background-image: linear-gradient(rgba(255, 150, 60, 0.38), rgba(255, 150, 60, 0.38));
+}
+
+.heat-4 {
+    background-image: linear-gradient(rgba(255, 104, 52, 0.5), rgba(255, 104, 52, 0.5));
+}
+
+.heat-5 {
+    background-image: linear-gradient(rgba(255, 45, 45, 0.62), rgba(255, 45, 45, 0.62));
+}
+
+/* Keep your own ships readable underneath the tint. */
+.cell.ship.heat {
+    box-shadow: inset 0 0 0 2px rgba(120, 190, 255, 0.9);
+}
+
+.analysis {
+    max-width: 640px;
+    margin: 0 auto 30px;
+    padding: 20px 25px;
+    text-align: left;
+    background: rgba(255, 255, 255, 0.05);
+    border: 2px solid rgba(0, 212, 255, 0.3);
+    border-radius: 15px;
+}
+
+.analysis h3 {
+    text-align: center;
+}
+
+.analysis h4 {
+    margin: 20px 0 10px;
+    color: #7dd3fc;
+    font-size: 1rem;
+}
+
+.analysis-score {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 15px;
+}
+
+.analysis-label {
+    color: #7dd3fc;
+    font-size: 1rem;
+}
+
+.analysis-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #00d4ff;
+}
+
+.analysis-summary {
+    margin-top: 12px;
+    font-size: 0.95rem;
+    color: #cbd5e1;
+}
+
+.analysis-mistakes {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.analysis-mistakes li {
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-left: 3px solid #ff6b6b;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    color: #e2e8f0;
+}
+
+.analysis-mistakes strong {
+    color: #00d4ff;
 }
 
 @media (max-width: 768px) {
