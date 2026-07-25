@@ -1,6 +1,6 @@
 import { createGrid, getAdjacentCells } from '../board.js';
 import { pickRandom } from '../rng.js';
-import { HIT, MISS, isFired, unfiredCells, unresolvedHits } from './knowledge.js';
+import { HIT, MISS, isBlocked, isFired, unfiredCells, unresolvedHits } from './knowledge.js';
 
 export const DEFAULT_OPTIONS = {
     // Multiplier applied per unresolved hit a candidate placement covers, so
@@ -40,6 +40,10 @@ export function computeProbabilityMap(knowledge, options = {}) {
                     let hitsCovered = 0;
                     let valid = true;
                     for (const cell of cells) {
+                        if (isBlocked(knowledge, cell.row, cell.col)) {
+                            valid = false;
+                            break;
+                        }
                         const shot = knowledge.shots[cell.row][cell.col];
                         if (shot === MISS || knowledge.sunkCells[cell.row][cell.col]) {
                             valid = false;
@@ -78,6 +82,7 @@ export function bestCells(knowledge, map) {
     for (let row = 0; row < knowledge.size; row++) {
         for (let col = 0; col < knowledge.size; col++) {
             if (isFired(knowledge, row, col)) continue;
+            if (isBlocked(knowledge, row, col)) continue;
             const score = map[row][col];
             if (score > best) {
                 best = score;

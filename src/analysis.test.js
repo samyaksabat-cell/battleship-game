@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { analyzeShots, formatCell } from './analysis.js';
 import { createKnowledge } from './ai/knowledge.js';
+import { bestCells, computeProbabilityMap } from './ai/hard.js';
 import { createGrid } from './board.js';
 
 // A stub engine keeps the arithmetic of the scoring readable: every cell scores
@@ -102,5 +103,22 @@ describe('post-game analysis', () => {
     it('starts from a fresh knowledge state', () => {
         const knowledge = createKnowledge();
         expect(knowledge.remainingShipSizes).toEqual([5, 4, 3, 3, 2]);
+    });
+
+    it('excludes blocked cells from the analysis probability map and best cell', () => {
+        const initialKnowledge = createKnowledge();
+        const initialMap = computeProbabilityMap(initialKnowledge);
+        const topCell = bestCells(initialKnowledge, initialMap).cells[0];
+        const blocked = createGrid(10, false);
+        blocked[topCell.row][topCell.col] = true;
+        const shot = { row: (topCell.row + 1) % 10, col: topCell.col, hit: false };
+
+        const { turns } = analyzeShots(
+            [shot],
+            { blocked, includeMap: true }
+        );
+
+        expect(turns[0].map[topCell.row][topCell.col]).toBe(0);
+        expect(turns[0].bestCell).not.toEqual(topCell);
     });
 });

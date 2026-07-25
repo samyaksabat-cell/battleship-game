@@ -61,4 +61,14 @@ describe('board helpers', () => {
         const again = createRandomFleet(createRng(99));
         expect(again.ships).toEqual(fleet.ships);
     });
+
+    it('keeps blocked cells clear while placing around them', () => {
+        const blocked = [{ row: 0, col: 0 }, { row: 9, col: 9 }];
+        const fleet = createRandomFleet(createRng(12), SHIPS, GRID_SIZE, blocked);
+        expect(fleet.grid[0][0]).toBeNull();
+        expect(fleet.grid[9][9]).toBeNull();
+        expect(fleet.ships.flatMap((ship) => ship.positions).some((cell) =>
+            blocked.some((island) => island.row === cell.row && island.col === cell.col)
+        )).toBe(false);
+    });
 });

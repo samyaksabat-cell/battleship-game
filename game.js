@@ -1,11 +1,14 @@
 import { GRID_SIZE, SHIPS } from './src/constants.js';
-import { canPlaceShip, createGrid, placeShip } from './src/board.js';
+import { canPlaceShip, createGrid, createRandomFleet, placeShip } from './src/board.js';
 import { createAI } from './src/ai/index.js';
 import { createKnowledge, recordShot } from './src/ai/knowledge.js';
 import { computeProbabilityMap } from './src/ai/hard.js';
 import { analyzeShots, formatCell } from './src/analysis.js';
 import { buildReplay } from './src/replay.js';
 import { loadStats, recordGame, saveStats } from './src/scoring.js';
+import { dailyChallenge } from './src/daily.js';
+import { getMap, MAPS } from './src/maps.js';
+import { isMuted, playSound, setMuted } from './src/audio.js';
 
 const HEAT_LEVELS = 5;
 
@@ -18,6 +21,13 @@ let currentPlayerShipIndex = 0;
 let isPlayerTurn = true;
 let gameOver = false;
 let isHorizontal = true;
+let currentMapId = 'classic';
+let currentMap = getMap(currentMapId);
+let islands = [];
+let islandLookup = new Set();
+let blocked = createGrid(GRID_SIZE, false);
+let turnCounter = 0;
+let dailyFleet = null;
 
 // AI State
 let aiDifficulty = 'medium';
@@ -42,6 +52,9 @@ const aiGridElement = document.getElementById('ai-grid');
 const randomizeBtn = document.getElementById('randomize-btn');
 const startGameBtn = document.getElementById('start-game-btn');
 const difficultySelect = document.getElementById('difficulty-select');
+const mapSelect = document.getElementById('map-select');
+const dailyChallengeBtn = document.getElementById('daily-challenge-btn');
+const dailyStatus = document.getElementById('daily-status');
 const heatmapToggle = document.getElementById('heatmap-toggle');
 const heatmapLegend = document.getElementById('heatmap-legend');
 const heatmapNote = document.getElementById('heatmap-note');
@@ -69,7 +82,64 @@ const replayPrev = document.getElementById('replay-prev');
 const replayPlay = document.getElementById('replay-play');
 const replayNext = document.getElementById('replay-next');
 const replayRestart = document.getElementById('replay-restart');
+const muteToggle = document.getElementById('mute-toggle');
+const playerBoardGame = document.getElementById('player-board-game');
 let statsOrigin = setupScreen;
+
+function updateMapState(mapId) {
+    currentMapId = mapId;
+    currentMap = getMap(currentMapId) ?? MAPS.classic;
+    islands = currentMap.islands ?? [];
+    islandLookup = new Set(islands.map(({ row, col }) => `${row},${col}`));
+    blocked = createGrid(GRID_SIZE, false);
+    islands.forEach(({ row, col }) => {
+        if (blocked[row]?.[col] !== undefined) blocked[row][col] = true;
+    });
+}
+
+function isIsland(row, col) {
+    return islandLookup.has(`${row},${col}`);
+}
+
+function canPlaceCurrentShip(row, col, size, horizontal) {
+    if (!canPlaceShip(playerGrid, row, col, size, horizontal)) return false;
+    for (let i = 0; i < size; i++) {
+        const shipRow = horizontal ? row : row + i;
+        const shipCol = horizontal ? col + i : col;
+        if (isIsland(shipRow, shipCol)) return false;
+    }
+    return true;
+}
+
+function triggerEffect(gridElement, row, col, effect) {
+    const cell = gridElement.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+    if (!cell) return;
+    cell.classList.add(effect);
+    setTimeout(() => cell.classList.remove(effect), 500);
+}
+
+function triggerShipEffect(gridElement, positions, effect) {
+    positions.forEach(({ row, col }) => {
+        const cell = gridElement.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+        if (cell) cell.classList.add(effect);
+    });
+    setTimeout(() => positions.forEach(({ row, col }) => {
+        const cell = gridElement.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+        if (cell) cell.classList.remove(effect);
+    }), 700);
+}
+
+function triggerShake() {
+    gameScreen.classList.add('shake');
+    setTimeout(() => gameScreen.classList.remove('shake'), 500);
+}
+
+function triggerSonar() {
+    const overlay = document.createElement('div');
+    overlay.className = 'sonar-sweep';
+    playerBoardGame.appendChild(overlay);
+    setTimeout(() => overlay.remove(), 900);
+}
 
 // Initialize grids
 function initializeGrids() {
@@ -82,6 +152,7 @@ function initializeGrids() {
     turnIndicator.textContent = 'Your Turn';
     turnIndicator.style.color = '#00d4ff';
     gameOver = false;
+    turnCounter = 0;
 
     resetAI();
     playerShotHistory = [];
@@ -89,7 +160,7 @@ function initializeGrids() {
 
 function resetAI() {
     ai = createAI(aiDifficulty);
-    aiKnowledge = createKnowledge(SHIPS);
+    aiKnowledge = createKnowledge(SHIPS, GRID_SIZE, blocked);
 }
 
 // Create grid UI
@@ -101,13 +172,16 @@ function createGridUI(gridElement, isSetup = false, isAI = false) {
             cell.className = 'cell';
             cell.dataset.row = row;
             cell.dataset.col = col;
+            if (isIsland(row, col)) cell.classList.add('island');
 
             if (isSetup && !isAI) {
-                cell.addEventListener('click', () => handleSetupClick(row, col));
-                cell.addEventListener('contextmenu', (e) => {
-                    e.preventDefault();
-                    handleSetupRightClick(row, col);
-                });
+                if (!isIsland(row, col)) {
+                    cell.addEventListener('click', () => handleSetupClick(row, col));
+                    cell.addEventListener('contextmenu', (e) => {
+                        e.preventDefault();
+                        handleSetupRightClick(row, col);
+                    });
+                }
             } else if (!isSetup && isAI) {
                 cell.addEventListener('click', () => handlePlayerAttack(row, col));
             }
@@ -119,9 +193,10 @@ function createGridUI(gridElement, isSetup = false, isAI = false) {
 
 function handleSetupClick(row, col) {
     if (currentPlayerShipIndex >= SHIPS.length) return;
+    if (isIsland(row, col)) return;
 
     const ship = SHIPS[currentPlayerShipIndex];
-    if (canPlaceShip(playerGrid, row, col, ship.size, isHorizontal)) {
+    if (canPlaceCurrentShip(row, col, ship.size, isHorizontal)) {
         const positions = placeShip(playerGrid, row, col, ship.size, isHorizontal, ship.name);
         playerShips.push({ name: ship.name, positions, hits: 0 });
         currentPlayerShipIndex++;
@@ -145,6 +220,7 @@ function updateSetupGrid() {
         const row = parseInt(cell.dataset.row);
         const col = parseInt(cell.dataset.col);
         cell.className = 'cell';
+        if (isIsland(row, col)) cell.classList.add('island');
         if (playerGrid[row][col]) {
             cell.classList.add('ship');
         }
@@ -164,21 +240,9 @@ function updateCurrentShipDisplay() {
 function randomizePlacement() {
     initializeGrids();
     isHorizontal = true;
-
-    SHIPS.forEach(ship => {
-        let placed = false;
-        while (!placed) {
-            const row = Math.floor(Math.random() * GRID_SIZE);
-            const col = Math.floor(Math.random() * GRID_SIZE);
-            const horizontal = Math.random() < 0.5;
-
-            if (canPlaceShip(playerGrid, row, col, ship.size, horizontal)) {
-                const positions = placeShip(playerGrid, row, col, ship.size, horizontal, ship.name);
-                playerShips.push({ name: ship.name, positions, hits: 0 });
-                placed = true;
-            }
-        }
-    });
+    const fleet = createRandomFleet(Math.random, SHIPS, GRID_SIZE, islands);
+    playerGrid = fleet.grid;
+    playerShips = fleet.ships;
 
     currentPlayerShipIndex = SHIPS.length;
     updateSetupGrid();
@@ -190,21 +254,10 @@ function randomizePlacement() {
 function startGame() {
     resetAI();
 
-    // Place AI ships randomly
-    SHIPS.forEach(ship => {
-        let placed = false;
-        while (!placed) {
-            const row = Math.floor(Math.random() * GRID_SIZE);
-            const col = Math.floor(Math.random() * GRID_SIZE);
-            const horizontal = Math.random() < 0.5;
-
-            if (canPlaceShip(aiGrid, row, col, ship.size, horizontal)) {
-                const positions = placeShip(aiGrid, row, col, ship.size, horizontal, ship.name);
-                aiShips.push({ name: ship.name, positions, hits: 0 });
-                placed = true;
-            }
-        }
-    });
+    const fleet = dailyFleet ?? createRandomFleet(Math.random, SHIPS, GRID_SIZE, islands);
+    aiGrid = fleet.grid;
+    aiShips = fleet.ships;
+    dailyFleet = null;
 
     setupScreen.classList.add('hidden');
     gameScreen.classList.remove('hidden');
@@ -215,6 +268,7 @@ function startGame() {
     updateHeatmapControls();
     updateGameGrids();
     updateScore();
+    muteToggle.checked = isMuted();
 }
 
 // The heatmap shows the Hard AI's probability map, so it is only meaningful
@@ -255,6 +309,10 @@ function updateGameGrids() {
         cell.className = 'cell';
         cell.textContent = '';
         cell.removeAttribute('title');
+        if (isIsland(row, col)) {
+            cell.classList.add('island');
+            return;
+        }
 
         const cellData = playerGrid[row][col];
 
@@ -291,6 +349,10 @@ function updateGameGrids() {
         const col = parseInt(cell.dataset.col);
         cell.className = 'cell';
         cell.textContent = '';
+        if (isIsland(row, col)) {
+            cell.classList.add('island');
+            return;
+        }
 
         const cellData = aiGrid[row][col];
         if (typeof cellData === 'object' && cellData !== null) {
@@ -301,6 +363,12 @@ function updateGameGrids() {
                 cell.classList.add('miss');
                 cell.textContent = '○';
             }
+        }
+        const unfired = typeof cellData !== 'object' || cellData === null;
+        if (currentMap.hasFog && unfired) {
+            const fogged = currentMap.fogCells(turnCounter, GRID_SIZE)
+                .some((fogCell) => fogCell.row === row && fogCell.col === col);
+            if (fogged) cell.classList.add('fog');
         }
     });
 
@@ -318,6 +386,7 @@ function updateGameGrids() {
 // Player attack
 function handlePlayerAttack(row, col) {
     if (!isPlayerTurn || gameOver) return;
+    if (isIsland(row, col)) return;
 
     const cellData = aiGrid[row][col];
 
@@ -326,6 +395,8 @@ function handlePlayerAttack(row, col) {
 
     let sunkShip = null;
     const hit = typeof cellData === 'string';
+    turnCounter++;
+    playSound('fire');
 
     if (hit) {
         aiGrid[row][col] = { hit: true, ship: cellData };
@@ -337,14 +408,19 @@ function handlePlayerAttack(row, col) {
                 sunkShip = { size: ship.positions.length, positions: ship.positions };
             }
         }
+        playSound(sunkShip ? 'sink' : 'hit');
     } else {
         aiGrid[row][col] = { miss: true };
+        playSound('splash');
     }
 
     playerShotHistory.push({ row, col, hit, sunk: Boolean(sunkShip), sunkShip });
 
     updateGameGrids();
     updateScore();
+    triggerEffect(aiGridElement, row, col, hit ? 'exploding' : 'splashing');
+    if (sunkShip) triggerShipEffect(aiGridElement, sunkShip.positions, 'sinking');
+    if (hit) triggerShake();
 
     if (checkGameOver()) return;
 
@@ -366,6 +442,7 @@ function aiTurn() {
     const cellData = playerGrid[row][col];
     const hit = typeof cellData === 'string';
     let sunkShip = null;
+    playSound('fire');
 
     if (hit) {
         playerGrid[row][col] = { hit: true, ship: cellData };
@@ -376,8 +453,10 @@ function aiTurn() {
                 sunkShip = { size: ship.positions.length, positions: ship.positions };
             }
         }
+        playSound(sunkShip ? 'sink' : 'hit');
     } else {
         playerGrid[row][col] = { miss: true };
+        playSound('splash');
     }
 
     const result = { row, col, hit, sunk: Boolean(sunkShip), sunkShip };
@@ -386,6 +465,9 @@ function aiTurn() {
 
     updateGameGrids();
     updateScore();
+    triggerEffect(playerGridGame, row, col, hit ? 'exploding' : 'splashing');
+    if (sunkShip) triggerShipEffect(playerGridGame, sunkShip.positions, 'sinking');
+    if (hit) triggerShake();
 
     if (checkGameOver()) return;
 
@@ -405,7 +487,7 @@ function updateScore() {
 
 // Post-game analysis of the player's own shots
 function renderAnalysis() {
-    const { turns, efficiency, worstTurns } = analyzeShots(playerShotHistory);
+    const { turns, efficiency, worstTurns } = analyzeShots(playerShotHistory, { blocked });
 
     if (turns.length === 0) {
         analysisEfficiency.textContent = '—';
@@ -501,6 +583,10 @@ function renderReplayFrame() {
         const key = `${row},${col}`;
         cell.className = 'cell';
         cell.textContent = '';
+        if (isIsland(row, col)) {
+            cell.classList.add('island');
+            return;
+        }
         const level = heatLevel(frame.map[row][col], minScore, maxScore);
         if (level > 0) cell.classList.add('heat', `heat-${level}`);
         const shot = fired.get(key);
@@ -563,7 +649,7 @@ function toggleReplay() {
 
 function showReplay() {
     stopReplay();
-    const result = buildReplay(playerShotHistory);
+    const result = buildReplay(playerShotHistory, { blocked });
     replayFrames = result.frames;
     replayIndex = 0;
     replay.classList.remove('hidden');
@@ -594,18 +680,29 @@ function checkGameOver() {
             gameOverTitle.textContent = 'You Lose!';
             gameOverMessage.textContent = 'The AI sank all your ships. Better luck next time!';
             gameOverTitle.style.color = '#ff6b6b';
+            playSound('lose');
         } else {
             gameOverTitle.textContent = 'You Win!';
             gameOverMessage.textContent = 'Congratulations! You sank all enemy ships!';
             gameOverTitle.style.color = '#00d4ff';
+            playSound('win');
         }
 
         const result = recordGame(loadStats(), { difficulty: aiDifficulty, won });
         saveStats(undefined, result.stats);
-        pointsEarned.textContent = won
-            ? `${result.pointsEarned} pts — ${result.basePoints} base × ${result.multiplier.toFixed(1)} streak = ` +
-              `${result.pointsEarned} pts (win streak: ${result.stats.currentStreak})`
-            : 'No points — win streak reset.';
+        if (won) {
+            const raw = Number.isInteger(result.rawPoints)
+                ? `${result.rawPoints}`
+                : result.rawPoints.toFixed(1);
+            const rounding = Number.isInteger(result.rawPoints)
+                ? ''
+                : `, rounded to ${result.pointsEarned}`;
+            pointsEarned.textContent =
+                `${result.pointsEarned} pts — ${result.basePoints} base × ${result.multiplier.toFixed(1)} ` +
+                `streak = ${raw}${rounding} (win streak: ${result.stats.currentStreak})`;
+        } else {
+            pointsEarned.textContent = 'No points — win streak reset.';
+        }
         renderAnalysis();
         watchReplayBtn.disabled = playerShotHistory.length === 0;
         hideReplay();
@@ -619,6 +716,7 @@ function checkGameOver() {
 // Play again
 function playAgain() {
     hideReplay();
+    dailyStatus.textContent = '';
     gameOverScreen.classList.add('hidden');
     setupScreen.classList.remove('hidden');
 
@@ -636,6 +734,30 @@ function playAgain() {
 // Event listeners
 randomizeBtn.addEventListener('click', randomizePlacement);
 startGameBtn.addEventListener('click', startGame);
+mapSelect.addEventListener('change', () => {
+    updateMapState(mapSelect.value);
+    dailyFleet = null;
+    dailyStatus.textContent = '';
+    initializeGrids();
+    createGridUI(playerGridSetup, true, false);
+    updateSetupGrid();
+    updateCurrentShipDisplay();
+    startGameBtn.disabled = true;
+});
+dailyChallengeBtn.addEventListener('click', () => {
+    const now = new Date();
+    const today = [
+        now.getFullYear(),
+        String(now.getMonth() + 1).padStart(2, '0'),
+        String(now.getDate()).padStart(2, '0')
+    ].join('-');
+    const challenge = dailyChallenge(today);
+    dailyFleet = challenge.fleet;
+    mapSelect.value = challenge.mapId;
+    updateMapState(challenge.mapId);
+    dailyStatus.textContent = `Daily Challenge: ${today} (seed ${challenge.seed})`;
+    randomizePlacement();
+});
 playAgainBtn.addEventListener('click', playAgain);
 viewStatsBtn.addEventListener('click', () => {
     statsOrigin = setupScreen;
@@ -677,10 +799,17 @@ heatmapToggle.addEventListener('change', () => {
     showHeatmap = heatmapToggle.checked;
     updateHeatmapControls();
     updateGameGrids();
+    if (showHeatmap && aiDifficulty === 'hard') {
+        triggerSonar();
+        playSound('sonar');
+    }
 });
+muteToggle.addEventListener('change', () => setMuted(muteToggle.checked));
 
 // Initialize
 aiDifficulty = difficultySelect.value;
+updateMapState(mapSelect.value);
+muteToggle.checked = isMuted();
 initializeGrids();
 createGridUI(playerGridSetup, true, false);
 updateCurrentShipDisplay();

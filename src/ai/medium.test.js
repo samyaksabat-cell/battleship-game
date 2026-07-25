@@ -74,4 +74,16 @@ describe('medium AI', () => {
 
         expect(seen.size).toBe(100);
     });
+
+    it('skips blocked cells while probing a wounded ship', () => {
+        const knowledge = createKnowledge();
+        const state = createMediumState();
+        const hit = { row: 4, col: 4, hit: true };
+        recordShot(knowledge, hit);
+        updateState(state, hit);
+        for (const cell of getAdjacentCells(4, 4)) {
+            if (cell.row !== 3 || cell.col !== 4) knowledge.blocked[cell.row][cell.col] = true;
+        }
+        expect(chooseMove(knowledge, state, createRng(1))).toEqual({ row: 3, col: 4 });
+    });
 });

@@ -45,8 +45,21 @@ export function getAdjacentCells(row, col, gridSize = GRID_SIZE) {
 }
 
 // Places the whole fleet at random on a fresh grid. `rng` makes it deterministic.
-export function createRandomFleet(rng = Math.random, ships = SHIPS, size = GRID_SIZE) {
+export function createRandomFleet(
+    rng = Math.random,
+    ships = SHIPS,
+    size = GRID_SIZE,
+    blocked = null
+) {
     const grid = createGrid(size);
+    const blockedCells = Array.isArray(blocked?.[0])
+        ? blocked.flatMap((row, r) => row.map((isBlocked, col) =>
+            isBlocked ? { row: r, col } : null
+        ).filter(Boolean))
+        : Array.isArray(blocked) ? blocked : [];
+    blockedCells.forEach(({ row, col }) => {
+        if (grid[row]?.[col] === null) grid[row][col] = '__blocked__';
+    });
     const placed = ships.map((ship) => {
         for (;;) {
             const row = randomInt(rng, size);
@@ -57,6 +70,9 @@ export function createRandomFleet(rng = Math.random, ships = SHIPS, size = GRID_
                 return { name: ship.name, size: ship.size, positions, hits: 0 };
             }
         }
+    });
+    blockedCells.forEach(({ row, col }) => {
+        if (grid[row]?.[col] === '__blocked__') grid[row][col] = null;
     });
     return { grid, ships: placed };
 }

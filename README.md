@@ -3,9 +3,12 @@
 A browser-based Battleship game where a human plays against an AI opponent with
 three selectable difficulty tiers.
 
+![Themed setup screen with the convoy logo](docs/screenshots/setup.png)
+
 ## Features
 
 - **Single-page web app** - HTML/CSS/JS only, no backend and no build step
+- **"Convoy through the Archipelago" maritime theme** with an inline SVG warships logo
 - **Standard 10x10 grid** with authentic ship set:
   - Carrier (5 cells)
   - Battleship (4 cells)
@@ -17,7 +20,11 @@ three selectable difficulty tiers.
   - Right-click to rotate ship orientation
   - "Randomize" button for auto-placement
 - **Three AI difficulty tiers** (selectable on the setup screen)
+- **Three tactical maps** - Classic Waters, Archipelago, and Rolling Fog
+- **Deterministic Daily Challenge** with a date-seeded map and AI fleet
 - **"Show AI reasoning"** heatmap of the Hard AI's probability map
+- **Synthesized Web Audio sound effects** with a persistent mute toggle
+- **Game-feel animations** for hits, misses, sinks, screen shake, and sonar
 - **Post-game analysis** grading every shot you fired
 - **Local points and streaks** with a personal stats screen
 - **Animated post-game replay** of your shot history and biggest mistakes
@@ -67,6 +74,49 @@ every turn, is drawn on top of the existing ship/hit/miss colours without
 replacing them, and disappears as soon as the toggle is switched off. With Easy
 or Medium selected the toggle explains that the heatmap is Hard-only.
 
+## Maritime theme and maps
+
+The visual direction is **Convoy through the Archipelago**: deep ocean and teal
+water, sandy islands, container-yellow controls, warning-red interceptions, and
+storm-grey fog. The inline SVG logo shows naval vessels heading into the
+waters. Internal ship names and game logic remain unchanged.
+
+The setup screen's **Map** selector offers:
+
+- **Classic Waters** - open water with no islands or fog.
+- **Archipelago** - fixed island cells that are impassable for both players:
+  ships cannot be placed there and neither side can fire there. The Hard AI
+  treats islands as invalid placements, so island cells always score `0` on its
+  reasoning heatmap.
+- **Rolling Fog** - a deterministic, turn-dependent storm-grey haze over
+  un-fired Enemy Waters cells. Fog drifts after each player shot, is visual-only,
+  and does not affect placement, firing logic, or the AI.
+
+![Archipelago map with islands and Hard AI heatmap](docs/screenshots/archipelago-heatmap.png)
+
+![Rolling Fog map](docs/screenshots/fog.png)
+
+### Daily Challenge
+
+The **Daily Challenge** button uses `dailySeed` and `dailyChallenge` from
+`src/daily.js` to compute a deterministic map and AI fleet locally. There is no
+backend: everyone using the same calendar date receives the same board. The
+setup screen displays the challenge date and seed.
+
+![Daily Challenge date and seed](docs/screenshots/daily-challenge.png)
+
+### Sound and game feel
+
+`src/audio.js` synthesizes short Web Audio effects without asset files for fire,
+hit, splash, sink, win, lose, and the Hard-AI sonar ping. The **Mute sounds**
+toggle persists per browser/device in `localStorage` under
+`battleship-muted-v1`.
+
+Hits trigger an explosion and brief screen shake, misses create a water ripple,
+sunk ships break apart before settling into their sunk state, and enabling the
+Hard reasoning heatmap sends a sonar sweep across your fleet. These effects are
+visual animations and are gated by `prefers-reduced-motion`.
+
 ## Post-game analysis
 
 Every shot you fire is recorded. When the match ends, the game replays your shot
@@ -90,8 +140,8 @@ Wins award points based on the selected difficulty:
 | Hard | 10 |
 
 Losses score 0 points. Consecutive wins multiply the base points by
-`1 + 0.5 × (streak − 1)`, capped at ×3. Points are rounded after applying the
-multiplier. The multiplier for wins 1 through 5+ is ×1.0, ×1.5, ×2.0, ×2.5,
+`1 + 0.5 × (streak − 1)`, capped at ×3. The result is rounded **after** applying
+the multiplier. The multiplier for wins 1 through 5+ is ×1.0, ×1.5, ×2.0, ×2.5,
 and ×3.0.
 
 For example:
@@ -99,6 +149,10 @@ For example:
 - Hard 2nd straight win: `10 × 1.5 = 15` points
 - Easy 3rd straight win: `2 × 2.0 = 4` points
 - Hard 5th+ straight win: `10 × 3.0 = 30` points
+
+For a non-whole raw result, the win screen shows the unrounded value and the
+rounded award honestly; for example, a Medium 2nd straight win reads
+`5 × 1.5 = 7.5 → 8`. Whole-number results omit the rounding note.
 
 A loss resets the current streak to 0, but preserves the best streak. Stats
 persist in `localStorage` under `battleship-stats-v1`, per browser/device with no
@@ -134,6 +188,13 @@ the turns listed in Post-game analysis. Controls are **Prev**, **Play/Pause**,
    - Sink all enemy ships to win
    - Don't let the AI sink your ships first!
 
+## Mobile / responsive
+
+At widths of 768px or less, the two boards stack vertically and cells shrink
+from 35px to 28px. The layout has been checked at approximately 375–400px wide.
+
+![Responsive mobile layout](docs/screenshots/mobile.png)
+
 ## Running the game locally
 
 The game is loaded as ES modules, so it must be served over HTTP (browsers block
@@ -158,10 +219,14 @@ npm test
 - `src/analysis.test.js` - post-game efficiency and worst-turn detection
 - `src/scoring.test.js` - points, streak multipliers and persisted stats
 - `src/replay.test.js` - chronological replay frames and mistake markers
+- `src/maps.test.js` - map bounds, islands, and deterministic fog
+- `src/daily.test.js` - date-seeded daily map and fleet determinism
 - `src/simulation.test.js` - 200 seeded games per tier, asserting Hard beats
   Medium beats Easy on average shots
+- `src/board.test.js`, `src/ai/*test.js`, and `src/scoring.test.js` also cover
+  blocked-cell, island-placement, and raw-scoring behavior
 
-The suite currently contains 41 tests.
+The suite currently contains 52 tests.
 
 `test.html` additionally runs a handful of the same checks straight in the
 browser (serve it over HTTP as above).
@@ -187,8 +252,8 @@ ES module imports work as-is - no bundler required.
 ## Files
 
 - `index.html` - Main game structure
-- `style.css` - Game styling, heatmap scale, analysis, stats and replay screens
-- `game.js` - DOM wiring: setup, turn loop, heatmap, analysis, stats and replay rendering
+- `style.css` - Maritime theme, board states, animations, heatmap, analysis, stats and replay screens
+- `game.js` - DOM wiring: setup, maps, fog, daily challenge, turn loop, audio hooks, heatmap, analysis, stats and replay rendering
 - `src/constants.js` - Grid size and ship definitions
 - `src/board.js` - Pure grid/placement helpers (`canPlaceShip`, `placeShip`, `getAdjacentCells`, ...)
 - `src/rng.js` - Seeded PRNG for deterministic tests and simulations
@@ -198,6 +263,9 @@ ES module imports work as-is - no bundler required.
 - `src/analysis.js` - Post-game shot grading
 - `src/scoring.js` - LocalStorage-backed points and streaks
 - `src/replay.js` - Post-game replay frame builder
+- `src/maps.js` - Pure map, island, and drifting-fog definitions
+- `src/daily.js` - Deterministic date-seeded daily challenge generator
+- `src/audio.js` - Safe Web Audio SFX engine and persisted mute state
 - `src/simulation.js` - Headless games used by the difficulty simulations
 - `test.html` - In-browser smoke tests
 - `manual-test.html` - Manual testing guide

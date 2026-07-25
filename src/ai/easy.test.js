@@ -45,4 +45,11 @@ describe('easy AI', () => {
         const second = chooseMove(createKnowledge(), createRng(123));
         expect(first).toEqual(second);
     });
+
+    it('never chooses a blocked cell', () => {
+        const blocked = Array.from({ length: 10 }, () => Array(10).fill(true));
+        blocked[4][7] = false;
+        const knowledge = createKnowledge(undefined, 10, blocked);
+        expect(chooseMove(knowledge, createRng(123))).toEqual({ row: 4, col: 7 });
+    });
 });

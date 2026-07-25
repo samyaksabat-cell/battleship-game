@@ -74,6 +74,15 @@ describe('hard AI probability map', () => {
         expect(map[move.row][move.col]).toBe(bestCells(knowledge, map).score);
         expect(getAdjacentCells(3, 3).some((c) => c.row === move.row && c.col === move.col)).toBe(true);
     });
+
+    it('does not score or choose blocked cells', () => {
+        const blocked = Array.from({ length: 10 }, () => Array(10).fill(false));
+        blocked[4][4] = true;
+        const knowledge = createKnowledge(undefined, 10, blocked);
+        const map = computeProbabilityMap(knowledge);
+        expect(map[4][4]).toBe(0);
+        expect(chooseMove(knowledge, createRng(4))).not.toEqual({ row: 4, col: 4 });
+    });
 });
 
 describe('hard AI targeting', () => {

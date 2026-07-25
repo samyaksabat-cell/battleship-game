@@ -32,6 +32,7 @@ export function recordGame(stats, { difficulty, won }) {
     };
     const basePoints = BASE_POINTS[difficulty] ?? 0;
     let multiplier = 1;
+    let rawPoints = 0;
     let pointsEarned = 0;
 
     newStats.gamesPlayed++;
@@ -44,7 +45,8 @@ export function recordGame(stats, { difficulty, won }) {
         newStats.currentStreak = stats.currentStreak + 1;
         newStats.bestStreak = Math.max(stats.bestStreak, newStats.currentStreak);
         multiplier = streakMultiplier(newStats.currentStreak);
-        pointsEarned = Math.round(basePoints * multiplier);
+        rawPoints = basePoints * multiplier;
+        pointsEarned = Math.round(rawPoints);
         newStats.totalPoints += pointsEarned;
     } else {
         newStats.losses++;
@@ -52,7 +54,7 @@ export function recordGame(stats, { difficulty, won }) {
         newStats.currentStreak = 0;
     }
 
-    return { stats: newStats, pointsEarned, multiplier, basePoints };
+    return { stats: newStats, pointsEarned, rawPoints, multiplier, basePoints };
 }
 
 function isValidStats(value) {
