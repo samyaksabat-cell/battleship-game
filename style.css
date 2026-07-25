@@ -824,6 +824,33 @@ h3 {
     to { filter: saturate(0.8) brightness(1.02); }
 }
 
+.sparkle {
+    position: absolute;
+    z-index: 11;
+    width: 7px;
+    height: 7px;
+    pointer-events: none;
+    border-radius: 50%;
+    background: var(--container-yellow);
+    box-shadow: 0 0 8px var(--foam), 0 0 14px var(--container-gold);
+    animation: sparkle-pop 1.1s ease-out both;
+}
+
+@keyframes sparkle-pop {
+    0% {
+        opacity: 0;
+        transform: translate(0, 8px) scale(0.2);
+    }
+    25% {
+        opacity: 1;
+        transform: translate(calc(var(--sparkle-drift) * 0.35), 0) scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: translate(var(--sparkle-drift), -28px) scale(0);
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -835,6 +862,10 @@ h3 {
 
     #game-screen > *:not(#end-game-modal) {
         transition: none;
+    }
+
+    .sparkle {
+        display: none;
     }
 }
 

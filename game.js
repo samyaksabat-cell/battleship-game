@@ -34,6 +34,7 @@ let islandLookup = new Set();
 let blocked = createGrid(GRID_SIZE, false);
 let turnCounter = 0;
 let dailyFleet = null;
+let aiWasBehind = false;
 
 // AI State
 let aiDifficulty = 'medium';
@@ -249,6 +250,22 @@ function revealEndGameModal(won, result, line) {
         endGamePoints.textContent = 'No points';
     }
     endGameModal.classList.remove('hidden');
+    if (won) triggerVictoryCelebration();
+}
+
+function triggerVictoryCelebration() {
+    if (globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    for (let index = 0; index < 30; index++) {
+        const sparkle = document.createElement('div');
+        sparkle.className = 'sparkle';
+        sparkle.style.left = `${Math.random() * 100}%`;
+        sparkle.style.top = `${Math.random() * 100}%`;
+        const delay = Math.random() * 0.35;
+        sparkle.style.animationDelay = `${delay}s`;
+        sparkle.style.setProperty('--sparkle-drift', `${(Math.random() - 0.5) * 24}px`);
+        gameScreen.appendChild(sparkle);
+        setTimeout(() => sparkle.remove(), 1100 + delay * 1000);
+    }
 }
 
 // Initialize grids
@@ -263,6 +280,7 @@ function initializeGrids() {
     turnIndicator.style.color = '#00d4ff';
     gameOver = false;
     turnCounter = 0;
+    aiWasBehind = false;
 
     resetAI();
     playerShotHistory = [];
@@ -789,6 +807,7 @@ function openReplayFromEndModal() {
 function checkGameOver() {
     const playerAlive = playerShips.filter(s => s.hits < s.positions.length).length;
     const aiAlive = aiShips.filter(s => s.hits < s.positions.length).length;
+    if (aiAlive < playerAlive) aiWasBehind = true;
 
     if (playerAlive === 0 || aiAlive === 0) {
         gameOver = true;
@@ -797,7 +816,8 @@ function checkGameOver() {
             won,
             playerShipsLeft: playerAlive,
             aiShipsLeft: aiAlive,
-            difficulty: aiDifficulty
+            difficulty: aiDifficulty,
+            aiWasBehind
         });
         if (!won) {
             gameOverTitle.textContent = 'You Lose!';
@@ -823,7 +843,7 @@ function checkGameOver() {
         endGameTimer = setTimeout(() => {
             endGameTimer = null;
             revealEndGameModal(won, result, line);
-        }, 500);
+        }, 1000);
 
         return true;
     }
