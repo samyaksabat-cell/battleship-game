@@ -8,7 +8,21 @@
 </head>
 <body>
     <div class="container">
-        <h1>Battleship</h1>
+        <div class="brand-lockup">
+            <svg class="brand-logo" viewBox="0 0 160 100" role="img" aria-labelledby="logo-title logo-desc">
+                <title id="logo-title">Convoy through the Archipelago</title>
+                <desc id="logo-desc">Two naval vessels crossing teal waves beneath a golden horizon.</desc>
+                <circle cx="126" cy="25" r="12" fill="#f3c969"></circle>
+                <path d="M0 69 Q22 55 44 69 T88 69 T132 69 T176 69 V100 H0Z" fill="#0b3045"></path>
+                <path d="M0 80 Q22 66 44 80 T88 80 T132 80 T176 80" fill="none" stroke="#5bd3ca" stroke-width="4"></path>
+                <path d="M12 64 L38 64 L46 53 L75 53 L84 64 L93 64 L87 72 L19 72Z" fill="#d8f3f0" stroke="#071a2b" stroke-width="3"></path>
+                <path d="M49 53 V36 H61 V53 M55 36 V29" fill="none" stroke="#d8f3f0" stroke-width="3"></path>
+                <path d="M95 71 L116 71 L123 61 L148 61 L156 71 H160 L155 78 H101Z" fill="#a9cfce" stroke="#071a2b" stroke-width="3"></path>
+                <path d="M126 61 V46 H136 V61 M131 46 V40" fill="none" stroke="#a9cfce" stroke-width="3"></path>
+                <path d="M8 84 Q30 74 52 84 T96 84 T140 84 T184 84" fill="none" stroke="#8bf3df" stroke-width="3" opacity=".75"></path>
+            </svg>
+            <h1>Battleship</h1>
+        </div>
         
         <div id="setup-screen" class="screen">
             <h2>Place Your Ships</h2>
@@ -31,16 +45,30 @@
                         <option value="hard">Hard - probability density</option>
                     </select>
                 </label>
+                <label class="difficulty-control" for="map-select">
+                    Map
+                    <select id="map-select">
+                        <option value="classic">Classic Waters</option>
+                        <option value="archipelago">Archipelago</option>
+                        <option value="fog">Rolling Fog</option>
+                    </select>
+                </label>
                 <button id="randomize-btn" class="btn">Randomize Placement</button>
+                <button id="daily-challenge-btn" class="btn">Daily Challenge</button>
                 <button id="start-game-btn" class="btn btn-primary" disabled>Start Game</button>
                 <button id="view-stats-btn" class="btn">View Stats</button>
             </div>
             <div id="current-ship" class="current-ship">Current Ship: Carrier (5 cells)</div>
+            <div id="daily-status" class="daily-status"></div>
         </div>
 
         <div id="game-screen" class="screen hidden">
             <div class="game-info">
                 <div class="turn-indicator" id="turn-indicator">Your Turn</div>
+                <label class="toggle mute-control" for="mute-toggle">
+                    <input type="checkbox" id="mute-toggle">
+                    Mute sounds
+                </label>
                 <div class="score">
                     <span>Your Ships: <span id="player-ships-left">5</span></span>
                     <span>AI Ships: <span id="ai-ships-left">5</span></span>
@@ -67,7 +95,9 @@
             <div class="game-boards">
                 <div class="board-container">
                     <h3>Your Fleet</h3>
-                    <div id="player-grid-game" class="grid"></div>
+                    <div id="player-board-game" class="board-game">
+                        <div id="player-grid-game" class="grid"></div>
+                    </div>
                 </div>
                 <div class="board-container">
                     <h3>Enemy Waters</h3>

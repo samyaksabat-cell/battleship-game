@@ -1,6 +1,6 @@
 import { getAdjacentCells } from '../board.js';
 import { pickRandom } from '../rng.js';
-import { isFired, unfiredCells } from './knowledge.js';
+import { isBlocked, isFired, unfiredCells } from './knowledge.js';
 
 // Medium AI: hunt/target. Fires randomly until it hits something, then probes
 // the orthogonally adjacent cells of the most recent unresolved hit until the
@@ -14,7 +14,8 @@ export function chooseMove(knowledge, state = createMediumState(), rng = Math.ra
         for (let i = state.hits.length - 1; i >= 0; i--) {
             const hit = state.hits[i];
             const candidates = getAdjacentCells(hit.row, hit.col, knowledge.size).filter(
-                (cell) => !isFired(knowledge, cell.row, cell.col)
+                (cell) => !isFired(knowledge, cell.row, cell.col) &&
+                    !isBlocked(knowledge, cell.row, cell.col)
             );
             if (candidates.length > 0) return candidates[0];
         }
@@ -41,7 +42,8 @@ export function updateState(state, { row, col, hit, sunk = false }) {
 export function pruneState(state, knowledge) {
     state.hits = state.hits.filter((hit) =>
         getAdjacentCells(hit.row, hit.col, knowledge.size).some(
-            (cell) => !isFired(knowledge, cell.row, cell.col)
+            (cell) => !isFired(knowledge, cell.row, cell.col) &&
+                !isBlocked(knowledge, cell.row, cell.col)
         )
     );
     if (state.hits.length === 0) state.mode = 'hunt';

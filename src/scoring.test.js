@@ -34,6 +34,12 @@ describe('scoring', () => {
         expect(recordGame(result.stats, { difficulty: 'easy', won: true }).pointsEarned).toBe(4);
     });
 
+    it('returns unrounded raw points alongside rounded points', () => {
+        const result = recordGame(createStats(), { difficulty: 'hard', won: true });
+        expect(result.rawPoints).toBe(10);
+        expect(result.pointsEarned).toBe(Math.round(result.rawPoints));
+    });
+
     it('resets current streak on loss while preserving best streak', () => {
         let stats = createStats();
         stats = recordGame(stats, { difficulty: 'medium', won: true }).stats;
