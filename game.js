@@ -5,11 +5,16 @@ import { createKnowledge, recordShot } from './src/ai/knowledge.js';
 import { computeProbabilityMap } from './src/ai/hard.js';
 import { analyzeShots, formatCell } from './src/analysis.js';
 import { buildReplay } from './src/replay.js';
-import { loadStats, recordGame, saveStats } from './src/scoring.js';
+import {
+    createStats, loadStats, recordGame, saveStats, streakMultiplier
+} from './src/scoring.js';
 import { dailyChallenge } from './src/daily.js';
 import { getMap, MAPS } from './src/maps.js';
 import { isMuted, playSound, setMuted } from './src/audio.js';
 import { personalityLine } from './src/personality.js';
+import {
+    clearProfile, hasProfile, loadProfile, saveProfile
+} from './src/profile.js';
 
 const HEAT_LEVELS = 5;
 
@@ -46,9 +51,19 @@ let endGameTimer = null;
 let endPointsAnimation = null;
 
 // DOM Elements
+const welcomeScreen = document.getElementById('welcome-screen');
+const welcomeNew = document.getElementById('welcome-new');
+const welcomeReturning = document.getElementById('welcome-returning');
+const welcomeBackTitle = document.getElementById('welcome-back-title');
+const welcomeSummary = document.getElementById('welcome-summary');
+const playerNameInput = document.getElementById('player-name-input');
+const welcomeStartBtn = document.getElementById('welcome-start-btn');
+const welcomeContinueBtn = document.getElementById('welcome-continue-btn');
+const welcomeNewPlayerBtn = document.getElementById('welcome-new-player-btn');
 const setupScreen = document.getElementById('setup-screen');
 const gameScreen = document.getElementById('game-screen');
 const gameOverScreen = document.getElementById('game-over-screen');
+const profileBar = document.getElementById('profile-bar');
 const endGameModal = document.getElementById('end-game-modal');
 const endGameTitle = document.getElementById('end-game-title');
 const endGameMessage = document.getElementById('end-game-message');
@@ -82,7 +97,6 @@ const pointsEarned = document.getElementById('points-earned');
 const statsScreen = document.getElementById('stats-screen');
 const statsContent = document.getElementById('stats-content');
 const viewStatsBtn = document.getElementById('view-stats-btn');
-const viewStatsGameOverBtn = document.getElementById('view-stats-game-over-btn');
 const statsBackBtn = document.getElementById('stats-back-btn');
 const watchReplayBtn = document.getElementById('watch-replay-btn');
 const replay = document.getElementById('replay');
@@ -95,6 +109,42 @@ const replayRestart = document.getElementById('replay-restart');
 const muteToggle = document.getElementById('mute-toggle');
 const playerBoardGame = document.getElementById('player-board-game');
 let statsOrigin = setupScreen;
+
+function updateProfileHeader() {
+    const profile = loadProfile();
+    const stats = loadStats();
+    const streak = stats.currentStreak;
+    const multiplier = streakMultiplier(streak) > 1 ? ` (×${streakMultiplier(streak)})` : '';
+    profileBar.textContent =
+        `${profile.name} • Score: ${stats.totalPoints} pts • Streak: ${streak}${multiplier}`;
+}
+
+function updateWelcomeView() {
+    const returning = hasProfile();
+    welcomeNew.classList.toggle('hidden', returning);
+    welcomeReturning.classList.toggle('hidden', !returning);
+    if (returning) {
+        const profile = loadProfile();
+        const stats = loadStats();
+        const multiplier = streakMultiplier(stats.currentStreak) > 1
+            ? ` (×${streakMultiplier(stats.currentStreak)})`
+            : '';
+        welcomeBackTitle.textContent = `Welcome back, ${profile.name}`;
+        welcomeSummary.innerHTML =
+            `<div><strong>Total points</strong><br>${stats.totalPoints}</div>` +
+            `<div><strong>Current streak</strong><br>${stats.currentStreak}${multiplier}</div>` +
+            `<div><strong>Best streak</strong><br>${stats.bestStreak}</div>`;
+    } else {
+        playerNameInput.value = '';
+        welcomeStartBtn.disabled = true;
+    }
+}
+
+function enterSetup() {
+    welcomeScreen.classList.add('hidden');
+    setupScreen.classList.remove('hidden');
+    updateProfileHeader();
+}
 
 function updateMapState(mapId) {
     currentMapId = mapId;
@@ -328,6 +378,7 @@ function startGame() {
     updateHeatmapControls();
     updateGameGrids();
     updateScore();
+    updateProfileHeader();
     muteToggle.checked = isMuted();
 }
 
@@ -763,11 +814,11 @@ function checkGameOver() {
 
         const result = recordGame(loadStats(), { difficulty: aiDifficulty, won });
         saveStats(undefined, result.stats);
+        updateProfileHeader();
         pointsEarned.textContent = won
             ? `${result.pointsEarned} pts — ${formatPointsBreakdown(result)} (win streak: ${result.stats.currentStreak})`
             : 'No points — win streak reset.';
         renderAnalysis();
-        watchReplayBtn.disabled = playerShotHistory.length === 0;
         hideReplay();
         endGameTimer = setTimeout(() => {
             endGameTimer = null;
@@ -810,6 +861,26 @@ function playAgain() {
 }
 
 // Event listeners
+playerNameInput.addEventListener('input', () => {
+    welcomeStartBtn.disabled = playerNameInput.value.trim().length === 0;
+});
+welcomeStartBtn.addEventListener('click', () => {
+    saveProfile(undefined, { name: playerNameInput.value });
+    enterSetup();
+});
+welcomeContinueBtn.addEventListener('click', enterSetup);
+welcomeNewPlayerBtn.addEventListener('click', () => {
+    if (!confirm('Start a new player profile and reset your score?')) return;
+    clearProfile();
+    saveStats(undefined, createStats());
+    updateWelcomeView();
+    updateProfileHeader();
+    setupScreen.classList.add('hidden');
+    gameScreen.classList.add('hidden');
+    gameOverScreen.classList.add('hidden');
+    statsScreen.classList.add('hidden');
+    welcomeScreen.classList.remove('hidden');
+});
 randomizeBtn.addEventListener('click', randomizePlacement);
 startGameBtn.addEventListener('click', startGame);
 mapSelect.addEventListener('change', () => {
@@ -841,7 +912,7 @@ viewStatsBtn.addEventListener('click', () => {
     statsOrigin = setupScreen;
     showStats();
 });
-viewStatsGameOverBtn.addEventListener('click', () => {
+watchReplayBtn.addEventListener('click', () => {
     statsOrigin = gameOverScreen;
     showStats();
 });
@@ -849,7 +920,6 @@ statsBackBtn.addEventListener('click', () => {
     statsScreen.classList.add('hidden');
     statsOrigin.classList.remove('hidden');
 });
-watchReplayBtn.addEventListener('click', showReplay);
 replayPrev.addEventListener('click', () => {
     stopReplay();
     if (replayIndex > 0) replayIndex--;
@@ -894,3 +964,4 @@ initializeGrids();
 createGridUI(playerGridSetup, true, false);
 updateCurrentShipDisplay();
 updateHeatmapControls();
+updateWelcomeView();

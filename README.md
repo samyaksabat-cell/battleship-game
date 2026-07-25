@@ -29,6 +29,7 @@ three selectable difficulty tiers.
 - **Local points and streaks** with a personal stats screen
 - **Animated post-game replay** of your shot history and biggest mistakes
 - **Victory/defeat end sequence** with an animated score counter and a contextual AI line
+- **Local player profile** with a welcome/returning flow and an in-game score header
 - **Responsive design** for different screen sizes
 
 ## AI Difficulty Tiers
@@ -129,6 +130,18 @@ moment. The game-over screen shows:
 - **Biggest missed opportunities** - the three turns with the largest gap between
   your cell and the optimal one, with the cell you should have fired at.
 
+## Player profile
+
+On first launch the game asks for a player name and saves it locally
+(`localStorage` key `battleship-profile-v1`, separate from the stats). Returning
+players skip the prompt and instead see a **"Welcome back, [name]"** summary of
+their total points and current/best streak before starting. During gameplay a
+persistent header shows the player's name, current point total, and current
+streak (with the active multiplier once a streak builds a bonus). A **New
+Player** button on the welcome screen clears the saved profile and resets the
+score so you can start over. The profile module (`src/profile.js`) is pure and
+unit-tested; all UI reuses the existing scoring/stats system.
+
 ## Points and streaks
 
 Wins award points based on the selected difficulty:
@@ -183,8 +196,9 @@ transition respect `prefers-reduced-motion`.
 
 ## Shot replay
 
-The **Watch Replay** button on the game-over screen steps through your shots move
-by move. Each frame redraws the Hard AI probability heatmap as it stood before
+The **View Replay** button on the victory/defeat modal opens the shot replay and
+steps through your shots move by move (the game-over screen's other button is
+**See Game Stats**). Each frame redraws the Hard AI probability heatmap as it stood before
 that shot, marks your chosen cell and the optimal cell (★), and shows the turn,
 your cell, hit/miss result, and percentage of optimal in the caption.
 Autoplay pauses noticeably longer on the three biggest-mistake turns, matching

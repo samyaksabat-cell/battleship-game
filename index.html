@@ -24,7 +24,24 @@
             <h1>Battleship</h1>
         </div>
         
-        <div id="setup-screen" class="screen">
+        <div id="welcome-screen" class="screen">
+            <div id="welcome-new">
+                <h2>Welcome Aboard</h2>
+                <label class="welcome-name-control" for="player-name-input">
+                    What should we call you?
+                    <input id="player-name-input" type="text" autocomplete="name" maxlength="40">
+                </label>
+                <button id="welcome-start-btn" class="btn btn-primary" disabled>Start Playing</button>
+            </div>
+            <div id="welcome-returning" class="hidden">
+                <h2 id="welcome-back-title">Welcome back</h2>
+                <div id="welcome-summary" class="welcome-summary"></div>
+                <button id="welcome-continue-btn" class="btn btn-primary">Start Playing</button>
+                <button id="welcome-new-player-btn" class="btn">New Player</button>
+            </div>
+        </div>
+
+        <div id="setup-screen" class="screen hidden">
             <h2>Place Your Ships</h2>
             <div class="setup-instructions">
                 <p>Click on your grid to place ships. Ships can be placed horizontally or vertically.</p>
@@ -63,6 +80,7 @@
         </div>
 
         <div id="game-screen" class="screen hidden">
+            <div id="profile-bar" class="profile-bar"></div>
             <div id="end-game-modal" class="end-game-modal hidden" role="dialog" aria-modal="true" aria-labelledby="end-game-title">
                 <div class="end-game-card">
                     <h2 id="end-game-title">Game Over</h2>
@@ -146,8 +164,7 @@
                 </div>
             </div>
             <div class="game-over-controls">
-                <button id="watch-replay-btn" class="btn">Watch Replay</button>
-                <button id="view-stats-game-over-btn" class="btn">View Stats</button>
+                <button id="watch-replay-btn" class="btn">See Game Stats</button>
             </div>
             <button id="play-again-btn" class="btn btn-primary">Play Again</button>
         </div>
