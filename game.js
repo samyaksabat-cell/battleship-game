@@ -4,6 +4,8 @@ import { createAI } from './src/ai/index.js';
 import { createKnowledge, recordShot } from './src/ai/knowledge.js';
 import { computeProbabilityMap } from './src/ai/hard.js';
 import { analyzeShots, formatCell } from './src/analysis.js';
+import { buildReplay } from './src/replay.js';
+import { loadStats, recordGame, saveStats } from './src/scoring.js';
 
 const HEAT_LEVELS = 5;
 
@@ -25,6 +27,10 @@ let showHeatmap = false;
 
 // Player shot history, replayed by the post-game analysis
 let playerShotHistory = [];
+let replayFrames = [];
+let replayIndex = 0;
+let replayTimer = null;
+let replayPlaying = false;
 
 // DOM Elements
 const setupScreen = document.getElementById('setup-screen');
@@ -49,6 +55,21 @@ const analysisEfficiency = document.getElementById('analysis-efficiency');
 const analysisSummary = document.getElementById('analysis-summary');
 const analysisMistakes = document.getElementById('analysis-mistakes');
 const playAgainBtn = document.getElementById('play-again-btn');
+const pointsEarned = document.getElementById('points-earned');
+const statsScreen = document.getElementById('stats-screen');
+const statsContent = document.getElementById('stats-content');
+const viewStatsBtn = document.getElementById('view-stats-btn');
+const viewStatsGameOverBtn = document.getElementById('view-stats-game-over-btn');
+const statsBackBtn = document.getElementById('stats-back-btn');
+const watchReplayBtn = document.getElementById('watch-replay-btn');
+const replay = document.getElementById('replay');
+const replayGrid = document.getElementById('replay-grid');
+const replayCaption = document.getElementById('replay-caption');
+const replayPrev = document.getElementById('replay-prev');
+const replayPlay = document.getElementById('replay-play');
+const replayNext = document.getElementById('replay-next');
+const replayRestart = document.getElementById('replay-restart');
+let statsOrigin = setupScreen;
 
 // Initialize grids
 function initializeGrids() {
@@ -58,6 +79,8 @@ function initializeGrids() {
     aiShips = [];
     currentPlayerShipIndex = 0;
     isPlayerTurn = true;
+    turnIndicator.textContent = 'Your Turn';
+    turnIndicator.style.color = '#00d4ff';
     gameOver = false;
 
     resetAI();
@@ -414,6 +437,148 @@ function renderAnalysis() {
     });
 }
 
+function renderStats() {
+    const stats = loadStats();
+    const winRate = stats.gamesPlayed ? (stats.wins / stats.gamesPlayed) * 100 : 0;
+    statsContent.innerHTML = `
+        <div class="stats-grid">
+            <div><strong>Total points</strong><br>${stats.totalPoints}</div>
+            <div><strong>Games played</strong><br>${stats.gamesPlayed}</div>
+            <div><strong>Wins</strong><br>${stats.wins}</div>
+            <div><strong>Losses</strong><br>${stats.losses}</div>
+            <div><strong>Win rate</strong><br>${winRate.toFixed(1)}%</div>
+            <div><strong>Current streak</strong><br>${stats.currentStreak}</div>
+            <div><strong>Best streak</strong><br>${stats.bestStreak}</div>
+        </div>
+        <table class="stats-difficulty">
+            <thead><tr><th>Difficulty</th><th>Wins</th><th>Losses</th></tr></thead>
+            <tbody>
+                ${['easy', 'medium', 'hard'].map((difficulty) => `
+                    <tr><td>${difficulty[0].toUpperCase() + difficulty.slice(1)}</td>
+                    <td>${stats.byDifficulty[difficulty].wins}</td>
+                    <td>${stats.byDifficulty[difficulty].losses}</td></tr>
+                `).join('')}
+            </tbody>
+        </table>`;
+}
+
+function showStats() {
+    setupScreen.classList.add('hidden');
+    gameScreen.classList.add('hidden');
+    gameOverScreen.classList.add('hidden');
+    statsScreen.classList.remove('hidden');
+    renderStats();
+}
+
+function hideReplay() {
+    replay.classList.add('hidden');
+    stopReplay();
+}
+
+function stopReplay() {
+    if (replayTimer !== null) {
+        clearTimeout(replayTimer);
+        replayTimer = null;
+    }
+    replayPlaying = false;
+    replayPlay.textContent = replayIndex === replayFrames.length - 1 ? 'Replay' : 'Play';
+}
+
+function renderReplayFrame() {
+    const frame = replayFrames[replayIndex];
+    if (!frame) return;
+    const scores = frame.map.flat().filter((score) => score > 0);
+    const maxScore = scores.length ? Math.max(...scores) : 0;
+    const minScore = scores.length ? Math.min(...scores) : 0;
+    const fired = new Map(
+        playerShotHistory.slice(0, replayIndex + 1)
+            .map((shot) => [`${shot.row},${shot.col}`, shot])
+    );
+    const cells = replayGrid.querySelectorAll('.cell');
+    cells.forEach((cell) => {
+        const row = Number(cell.dataset.row);
+        const col = Number(cell.dataset.col);
+        const key = `${row},${col}`;
+        cell.className = 'cell';
+        cell.textContent = '';
+        const level = heatLevel(frame.map[row][col], minScore, maxScore);
+        if (level > 0) cell.classList.add('heat', `heat-${level}`);
+        const shot = fired.get(key);
+        if (shot) {
+            cell.classList.add(shot.hit ? 'hit' : 'miss');
+            cell.textContent = shot.hit ? '✗' : '○';
+        }
+        if (row === frame.row && col === frame.col) cell.classList.add('replay-choice');
+        if (frame.bestCell && row === frame.bestCell.row && col === frame.bestCell.col) {
+            cell.classList.add('replay-best');
+            cell.textContent = `${cell.textContent}★`;
+        }
+    });
+    replay.classList.toggle('replay-frame--mistake', frame.isMistake);
+    replayCaption.classList.toggle('mistake', frame.isMistake);
+    const marker = frame.isMistake ? '⚠ Biggest mistakes — ' : '';
+    const result = frame.hit ? 'Hit' : 'Miss';
+    replayCaption.textContent =
+        `${marker}Turn ${frame.turn}/${replayFrames.length} — you fired ${formatCell(frame)} (${result}). ` +
+        `Optimal: ${frame.bestCell ? formatCell(frame.bestCell) : '—'} ` +
+        `(${Math.round(frame.ratio * 100)}% of optimal).`;
+    replayPrev.disabled = replayIndex === 0;
+    replayNext.disabled = replayIndex === replayFrames.length - 1;
+    replayPlay.textContent = replayPlaying
+        ? 'Pause'
+        : (replayIndex === replayFrames.length - 1 ? 'Replay' : 'Play');
+}
+
+function scheduleReplay() {
+    if (!replayFrames.length || replayIndex >= replayFrames.length - 1) {
+        stopReplay();
+        return;
+    }
+    replayTimer = setTimeout(() => {
+        replayTimer = null;
+        replayIndex++;
+        renderReplayFrame();
+        if (replayIndex < replayFrames.length - 1) {
+            scheduleReplay();
+        } else {
+            stopReplay();
+        }
+    }, replayFrames[replayIndex].isMistake ? 2600 : 1100);
+}
+
+function toggleReplay() {
+    if (replayTimer !== null) {
+        stopReplay();
+    } else if (replayFrames.length && replayIndex < replayFrames.length - 1) {
+        replayPlaying = true;
+        replayPlay.textContent = 'Pause';
+        scheduleReplay();
+    } else if (replayFrames.length) {
+        replayIndex = 0;
+        replayPlaying = true;
+        renderReplayFrame();
+        scheduleReplay();
+    }
+}
+
+function showReplay() {
+    stopReplay();
+    const result = buildReplay(playerShotHistory);
+    replayFrames = result.frames;
+    replayIndex = 0;
+    replay.classList.remove('hidden');
+    if (!replayFrames.length) {
+        replayCaption.textContent = 'No shots to replay.';
+        replayPlay.disabled = true;
+        replayPrev.disabled = true;
+        replayNext.disabled = true;
+        return;
+    }
+    replayPlay.disabled = false;
+    createGridUI(replayGrid);
+    renderReplayFrame();
+}
+
 // Check game over
 function checkGameOver() {
     const playerAlive = playerShips.filter(s => s.hits < s.positions.length).length;
@@ -424,7 +589,8 @@ function checkGameOver() {
         gameScreen.classList.add('hidden');
         gameOverScreen.classList.remove('hidden');
 
-        if (playerAlive === 0) {
+        const won = playerAlive !== 0;
+        if (!won) {
             gameOverTitle.textContent = 'You Lose!';
             gameOverMessage.textContent = 'The AI sank all your ships. Better luck next time!';
             gameOverTitle.style.color = '#ff6b6b';
@@ -434,7 +600,15 @@ function checkGameOver() {
             gameOverTitle.style.color = '#00d4ff';
         }
 
+        const result = recordGame(loadStats(), { difficulty: aiDifficulty, won });
+        saveStats(undefined, result.stats);
+        pointsEarned.textContent = won
+            ? `${result.pointsEarned} pts — ${result.basePoints} base × ${result.multiplier.toFixed(1)} streak = ` +
+              `${result.pointsEarned} pts (win streak: ${result.stats.currentStreak})`
+            : 'No points — win streak reset.';
         renderAnalysis();
+        watchReplayBtn.disabled = playerShotHistory.length === 0;
+        hideReplay();
 
         return true;
     }
@@ -444,6 +618,7 @@ function checkGameOver() {
 
 // Play again
 function playAgain() {
+    hideReplay();
     gameOverScreen.classList.add('hidden');
     setupScreen.classList.remove('hidden');
 
@@ -462,6 +637,35 @@ function playAgain() {
 randomizeBtn.addEventListener('click', randomizePlacement);
 startGameBtn.addEventListener('click', startGame);
 playAgainBtn.addEventListener('click', playAgain);
+viewStatsBtn.addEventListener('click', () => {
+    statsOrigin = setupScreen;
+    showStats();
+});
+viewStatsGameOverBtn.addEventListener('click', () => {
+    statsOrigin = gameOverScreen;
+    showStats();
+});
+statsBackBtn.addEventListener('click', () => {
+    statsScreen.classList.add('hidden');
+    statsOrigin.classList.remove('hidden');
+});
+watchReplayBtn.addEventListener('click', showReplay);
+replayPrev.addEventListener('click', () => {
+    stopReplay();
+    if (replayIndex > 0) replayIndex--;
+    renderReplayFrame();
+});
+replayNext.addEventListener('click', () => {
+    stopReplay();
+    if (replayIndex < replayFrames.length - 1) replayIndex++;
+    renderReplayFrame();
+});
+replayRestart.addEventListener('click', () => {
+    stopReplay();
+    replayIndex = 0;
+    renderReplayFrame();
+});
+replayPlay.addEventListener('click', toggleReplay);
 
 difficultySelect.addEventListener('change', () => {
     aiDifficulty = difficultySelect.value;

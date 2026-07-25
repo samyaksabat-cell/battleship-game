@@ -12,7 +12,8 @@ export function analyzeShots(shots, options = {}) {
     const {
         ships = SHIPS,
         probabilityMapFn = computeProbabilityMap,
-        worstCount = 3
+        worstCount = 3,
+        includeMap = false
     } = options;
 
     const knowledge = createKnowledge(ships);
@@ -25,7 +26,7 @@ export function analyzeShots(shots, options = {}) {
         const bestScore = best.score;
         const ratio = bestScore > 0 ? playerScore / bestScore : 1;
 
-        turns.push({
+        const turn = {
             turn: index + 1,
             row: shot.row,
             col: shot.col,
@@ -35,7 +36,9 @@ export function analyzeShots(shots, options = {}) {
             bestCell: best.cells[0] ?? null,
             gap: bestScore - playerScore,
             ratio
-        });
+        };
+        if (includeMap) turn.map = map;
+        turns.push(turn);
 
         recordShot(knowledge, shot);
     });
