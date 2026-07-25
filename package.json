@@ -1,0 +1,13 @@
+{
+  "name": "battleship-game",
+  "version": "1.0.0",
+  "description": "Browser-based Battleship game with three AI difficulty tiers",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.10"
+  }
+}
