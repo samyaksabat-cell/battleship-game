@@ -78,6 +78,8 @@ function initializeGrids() {
     aiShips = [];
     currentPlayerShipIndex = 0;
     isPlayerTurn = true;
+    turnIndicator.textContent = 'Your Turn';
+    turnIndicator.style.color = '#00d4ff';
     gameOver = false;
 
     resetAI();
