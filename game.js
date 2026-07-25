@@ -487,7 +487,7 @@ function updateScore() {
 
 // Post-game analysis of the player's own shots
 function renderAnalysis() {
-    const { turns, efficiency, worstTurns } = analyzeShots(playerShotHistory);
+    const { turns, efficiency, worstTurns } = analyzeShots(playerShotHistory, { blocked });
 
     if (turns.length === 0) {
         analysisEfficiency.textContent = '—';
@@ -583,6 +583,10 @@ function renderReplayFrame() {
         const key = `${row},${col}`;
         cell.className = 'cell';
         cell.textContent = '';
+        if (isIsland(row, col)) {
+            cell.classList.add('island');
+            return;
+        }
         const level = heatLevel(frame.map[row][col], minScore, maxScore);
         if (level > 0) cell.classList.add('heat', `heat-${level}`);
         const shot = fired.get(key);
@@ -645,7 +649,7 @@ function toggleReplay() {
 
 function showReplay() {
     stopReplay();
-    const result = buildReplay(playerShotHistory);
+    const result = buildReplay(playerShotHistory, { blocked });
     replayFrames = result.frames;
     replayIndex = 0;
     replay.classList.remove('hidden');

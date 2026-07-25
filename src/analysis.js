@@ -1,4 +1,4 @@
-import { SHIPS } from './constants.js';
+import { GRID_SIZE, SHIPS } from './constants.js';
 import { createKnowledge, recordShot, isFired } from './ai/knowledge.js';
 import { computeProbabilityMap, bestCells } from './ai/hard.js';
 
@@ -13,10 +13,11 @@ export function analyzeShots(shots, options = {}) {
         ships = SHIPS,
         probabilityMapFn = computeProbabilityMap,
         worstCount = 3,
-        includeMap = false
+        includeMap = false,
+        blocked = null
     } = options;
 
-    const knowledge = createKnowledge(ships);
+    const knowledge = createKnowledge(ships, blocked?.length ?? GRID_SIZE, blocked);
     const turns = [];
 
     shots.forEach((shot, index) => {
