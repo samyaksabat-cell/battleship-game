@@ -9,6 +9,7 @@ import { loadStats, recordGame, saveStats } from './src/scoring.js';
 import { dailyChallenge } from './src/daily.js';
 import { getMap, MAPS } from './src/maps.js';
 import { isMuted, playSound, setMuted } from './src/audio.js';
+import { personalityLine } from './src/personality.js';
 
 const HEAT_LEVELS = 5;
 
@@ -41,11 +42,20 @@ let replayFrames = [];
 let replayIndex = 0;
 let replayTimer = null;
 let replayPlaying = false;
+let endGameTimer = null;
+let endPointsAnimation = null;
 
 // DOM Elements
 const setupScreen = document.getElementById('setup-screen');
 const gameScreen = document.getElementById('game-screen');
 const gameOverScreen = document.getElementById('game-over-screen');
+const endGameModal = document.getElementById('end-game-modal');
+const endGameTitle = document.getElementById('end-game-title');
+const endGameMessage = document.getElementById('end-game-message');
+const endGamePoints = document.getElementById('end-game-points');
+const endGameBreakdown = document.getElementById('end-game-breakdown');
+const endViewReplayBtn = document.getElementById('end-view-replay-btn');
+const endPlayAgainBtn = document.getElementById('end-play-again-btn');
 const playerGridSetup = document.getElementById('player-grid');
 const playerGridGame = document.getElementById('player-grid-game');
 const aiGridElement = document.getElementById('ai-grid');
@@ -139,6 +149,56 @@ function triggerSonar() {
     overlay.className = 'sonar-sweep';
     playerBoardGame.appendChild(overlay);
     setTimeout(() => overlay.remove(), 900);
+}
+
+function formatPointsBreakdown(result) {
+    if (!result.rawPoints) return 'No points — win streak reset.';
+    const raw = Number.isInteger(result.rawPoints)
+        ? `${result.rawPoints}`
+        : result.rawPoints.toFixed(1);
+    const rounding = Number.isInteger(result.rawPoints)
+        ? ''
+        : `, rounded to ${result.pointsEarned}`;
+    return `${result.basePoints} base × ${result.multiplier.toFixed(1)} streak = ${raw}${rounding}`;
+}
+
+function animateEndPoints(points, streak) {
+    if (endPointsAnimation !== null) {
+        cancelAnimationFrame(endPointsAnimation);
+        endPointsAnimation = null;
+    }
+    const reducedMotion = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (reducedMotion || points === 0) {
+        endGamePoints.textContent = `${points} pts · win streak: ${streak}`;
+        return;
+    }
+    const started = performance.now();
+    const duration = 900;
+    const tick = (now) => {
+        const progress = Math.min(1, (now - started) / duration);
+        endGamePoints.textContent = `${Math.round(points * progress)} pts · win streak: ${streak}`;
+        if (progress < 1) {
+            endPointsAnimation = requestAnimationFrame(tick);
+        } else {
+            endPointsAnimation = null;
+        }
+    };
+    endPointsAnimation = requestAnimationFrame(tick);
+}
+
+function revealEndGameModal(won, result, line) {
+    if (!gameOver) return;
+    endGameTitle.textContent = won ? 'Victory!' : 'Defeat';
+    endGameMessage.textContent = line;
+    endGameBreakdown.textContent = won
+        ? formatPointsBreakdown(result)
+        : 'No points — win streak reset.';
+    if (won) {
+        animateEndPoints(result.pointsEarned, result.stats.currentStreak);
+    } else {
+        endGamePoints.textContent = 'No points';
+    }
+    endGameModal.classList.remove('hidden');
 }
 
 // Initialize grids
@@ -665,6 +725,15 @@ function showReplay() {
     renderReplayFrame();
 }
 
+function openReplayFromEndModal() {
+    endGameModal.classList.add('hidden');
+    gameScreen.classList.add('hidden');
+    gameScreen.classList.remove('defeat-transition');
+    gameOverScreen.classList.remove('hidden');
+    showReplay();
+    if (replayFrames.length) toggleReplay();
+}
+
 // Check game over
 function checkGameOver() {
     const playerAlive = playerShips.filter(s => s.hits < s.positions.length).length;
@@ -672,40 +741,38 @@ function checkGameOver() {
 
     if (playerAlive === 0 || aiAlive === 0) {
         gameOver = true;
-        gameScreen.classList.add('hidden');
-        gameOverScreen.classList.remove('hidden');
-
         const won = playerAlive !== 0;
+        const line = personalityLine({
+            won,
+            playerShipsLeft: playerAlive,
+            aiShipsLeft: aiAlive,
+            difficulty: aiDifficulty
+        });
         if (!won) {
             gameOverTitle.textContent = 'You Lose!';
-            gameOverMessage.textContent = 'The AI sank all your ships. Better luck next time!';
+            gameOverMessage.textContent = line;
             gameOverTitle.style.color = '#ff6b6b';
             playSound('lose');
+            gameScreen.classList.add('defeat-transition');
         } else {
             gameOverTitle.textContent = 'You Win!';
-            gameOverMessage.textContent = 'Congratulations! You sank all enemy ships!';
+            gameOverMessage.textContent = line;
             gameOverTitle.style.color = '#00d4ff';
             playSound('win');
         }
 
         const result = recordGame(loadStats(), { difficulty: aiDifficulty, won });
         saveStats(undefined, result.stats);
-        if (won) {
-            const raw = Number.isInteger(result.rawPoints)
-                ? `${result.rawPoints}`
-                : result.rawPoints.toFixed(1);
-            const rounding = Number.isInteger(result.rawPoints)
-                ? ''
-                : `, rounded to ${result.pointsEarned}`;
-            pointsEarned.textContent =
-                `${result.pointsEarned} pts — ${result.basePoints} base × ${result.multiplier.toFixed(1)} ` +
-                `streak = ${raw}${rounding} (win streak: ${result.stats.currentStreak})`;
-        } else {
-            pointsEarned.textContent = 'No points — win streak reset.';
-        }
+        pointsEarned.textContent = won
+            ? `${result.pointsEarned} pts — ${formatPointsBreakdown(result)} (win streak: ${result.stats.currentStreak})`
+            : 'No points — win streak reset.';
         renderAnalysis();
         watchReplayBtn.disabled = playerShotHistory.length === 0;
         hideReplay();
+        endGameTimer = setTimeout(() => {
+            endGameTimer = null;
+            revealEndGameModal(won, result, line);
+        }, 500);
 
         return true;
     }
@@ -716,6 +783,17 @@ function checkGameOver() {
 // Play again
 function playAgain() {
     hideReplay();
+    if (endGameTimer !== null) {
+        clearTimeout(endGameTimer);
+        endGameTimer = null;
+    }
+    if (endPointsAnimation !== null) {
+        cancelAnimationFrame(endPointsAnimation);
+        endPointsAnimation = null;
+    }
+    endGameModal.classList.add('hidden');
+    gameScreen.classList.remove('defeat-transition');
+    gameScreen.classList.add('hidden');
     dailyStatus.textContent = '';
     gameOverScreen.classList.add('hidden');
     setupScreen.classList.remove('hidden');
@@ -788,6 +866,8 @@ replayRestart.addEventListener('click', () => {
     renderReplayFrame();
 });
 replayPlay.addEventListener('click', toggleReplay);
+endViewReplayBtn.addEventListener('click', openReplayFromEndModal);
+endPlayAgainBtn.addEventListener('click', playAgain);
 
 difficultySelect.addEventListener('change', () => {
     aiDifficulty = difficultySelect.value;

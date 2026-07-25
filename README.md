@@ -28,7 +28,7 @@ three selectable difficulty tiers.
 - **Post-game analysis** grading every shot you fired
 - **Local points and streaks** with a personal stats screen
 - **Animated post-game replay** of your shot history and biggest mistakes
-- **Win/lose screens** with "Play Again" button
+- **Victory/defeat end sequence** with an animated score counter and a contextual AI line
 - **Responsive design** for different screen sizes
 
 ## AI Difficulty Tiers
@@ -160,6 +160,27 @@ backend. The **View Stats** button on the setup and game-over screens opens a
 stats screen showing total points, games played, wins/losses, win rate, current
 and best streak, and a per-difficulty W/L table.
 
+## Victory and defeat sequence
+
+When the final shot ends a match, the result is **not** shown instantly: the game
+holds on the final board for ~500ms so the last hit or sink animation registers,
+then fades in a modal **over the still-visible final board** (the board is not
+replaced by a separate screen).
+
+- **Victory** plays the sink/break-apart animation on the last enemy ship and a
+  win fanfare, then animates the awarded points **ticking up** from zero rather
+  than snapping to the final number, alongside a contextual victory line from the
+  AI's personality (blowout vs. hard-fought vs. normal).
+- **Defeat** applies a slower, desaturated transition to the board behind the
+  modal while keeping the modal card itself full-color and readable, and shows a
+  sportsmanlike (non-gloating) defeat line and `No points`.
+
+Both modals offer **View Replay** (primary) — which opens the animated shot
+replay below and starts autoplay — and **Play Again** (secondary), which returns
+to ship placement. The contextual lines come from `src/personality.js` and the
+animations reuse the existing sink, audio, and replay systems. The counter and
+transition respect `prefers-reduced-motion`.
+
 ## Shot replay
 
 The **Watch Replay** button on the game-over screen steps through your shots move
@@ -168,7 +189,8 @@ that shot, marks your chosen cell and the optimal cell (★), and shows the turn
 your cell, hit/miss result, and percentage of optimal in the caption.
 Autoplay pauses noticeably longer on the three biggest-mistake turns, matching
 the turns listed in Post-game analysis. Controls are **Prev**, **Play/Pause**,
-**Next**, and **Restart**.
+**Next**, and **Restart**. On narrow/mobile viewports the replay grid scales to
+fit its card so all ten columns stay visible without horizontal overflow.
 
 ## How to Play
 
