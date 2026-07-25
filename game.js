@@ -69,6 +69,7 @@ const replayPrev = document.getElementById('replay-prev');
 const replayPlay = document.getElementById('replay-play');
 const replayNext = document.getElementById('replay-next');
 const replayRestart = document.getElementById('replay-restart');
+let statsOrigin = setupScreen;
 
 // Initialize grids
 function initializeGrids() {
@@ -636,11 +637,17 @@ function playAgain() {
 randomizeBtn.addEventListener('click', randomizePlacement);
 startGameBtn.addEventListener('click', startGame);
 playAgainBtn.addEventListener('click', playAgain);
-viewStatsBtn.addEventListener('click', showStats);
-viewStatsGameOverBtn.addEventListener('click', showStats);
+viewStatsBtn.addEventListener('click', () => {
+    statsOrigin = setupScreen;
+    showStats();
+});
+viewStatsGameOverBtn.addEventListener('click', () => {
+    statsOrigin = gameOverScreen;
+    showStats();
+});
 statsBackBtn.addEventListener('click', () => {
     statsScreen.classList.add('hidden');
-    setupScreen.classList.remove('hidden');
+    statsOrigin.classList.remove('hidden');
 });
 watchReplayBtn.addEventListener('click', showReplay);
 replayPrev.addEventListener('click', () => {
