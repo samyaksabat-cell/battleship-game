@@ -33,7 +33,7 @@ export const WILDCARD_LINES = [
     "Cry 'Havoc!' and let slip the dogs of war. — Shakespeare, Julius Caesar",
     'Give me liberty, or give me death! — Patrick Henry',
     'All warfare is based on deception. — Sun Tzu, The Art of War',
-    "Nuts! — Gen. McAuliffe's reply at Bastogne, 1944",
+    "Nuts! — Gen. McAuliffe's real reply when the Germans demanded surrender at Bastogne, 1944",
     'Come and take it.',
     'Fortune favors the bold.',
     'He who fights and runs away lives to fight another day.'
@@ -61,15 +61,17 @@ export function personalityLine(context, options = {}) {
     } = options;
     const tier = normalizeTier(context.difficulty);
     const bucket = outcomeBucket(context);
-    const contextualLine = (context.won ? AI_LOSS_LINES : AI_WIN_LINES)[bucket][tier];
-    const pool = rng() < wildcardChance ? WILDCARD_LINES : [contextualLine];
+    const lines = context.won ? AI_LOSS_LINES : AI_WIN_LINES;
+    const contextualLine = lines[bucket]?.[tier];
+    const useWildcard = rng() < wildcardChance || !contextualLine;
+    const pool = useWildcard ? WILDCARD_LINES : [contextualLine];
     const available = pool.filter((line) => !recent.includes(line));
     const candidates = available.length ? available : pool;
     const chosen = candidates[Math.min(candidates.length - 1, Math.floor(rng() * candidates.length))];
 
     if (remember) {
-        recentLines.push(chosen);
-        if (recentLines.length > RECENT_LIMIT) recentLines.shift();
+        recent.push(chosen);
+        if (recent.length > RECENT_LIMIT) recent.shift();
     }
     return chosen;
 }

@@ -250,7 +250,11 @@ function revealEndGameModal(won, result, line) {
         endGamePoints.textContent = 'No points';
     }
     endGameModal.classList.remove('hidden');
-    if (won) triggerVictoryCelebration();
+    if (won) {
+        triggerVictoryCelebration();
+    } else {
+        gameScreen.classList.add('defeat-transition');
+    }
 }
 
 function triggerVictoryCelebration() {
@@ -388,6 +392,7 @@ function startGame() {
     dailyFleet = null;
 
     setupScreen.classList.add('hidden');
+    gameScreen.classList.remove('defeat-transition');
     gameScreen.classList.remove('hidden');
 
     createGridUI(playerGridGame, false, false);
@@ -824,7 +829,6 @@ function checkGameOver() {
             gameOverMessage.textContent = line;
             gameOverTitle.style.color = '#ff6b6b';
             playSound('lose');
-            gameScreen.classList.add('defeat-transition');
         } else {
             gameOverTitle.textContent = 'You Win!';
             gameOverMessage.textContent = line;

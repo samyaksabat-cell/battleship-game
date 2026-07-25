@@ -826,7 +826,7 @@ h3 {
 
 .sparkle {
     position: absolute;
-    z-index: 11;
+    z-index: 9;
     width: 7px;
     height: 7px;
     pointer-events: none;
