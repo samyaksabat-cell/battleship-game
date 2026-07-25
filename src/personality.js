@@ -1,46 +1,79 @@
-const LINES = {
-    victory: {
-        blowout: [
-            'A decisive convoy victory — your fleet barely gave them a chance.',
-            'The waters are yours. That was a commanding operation.'
-        ],
-        close: [
-            'A hard-fought victory — your last ships held the line.',
-            'You prevailed by the narrowest margin. Excellent seamanship.'
-        ],
-        normal: [
-            'Victory secured. Your fleet kept steady pressure throughout.',
-            'The convoy made it through. A well-earned win.'
-        ]
+export const AI_WIN_LINES = {
+    blowout: {
+        easy: 'Well, that happened. GG!',
+        medium: 'Called every shot. Every. Single. One.',
+        hard: "Statistically, that wasn't even close."
     },
-    defeat: {
-        blowout: [
-            'The convoy was intercepted today. Regroup and chart a new course.',
-            'A tough patrol, but every engagement is a chance to learn.'
-        ],
-        close: [
-            'That was a close engagement. Your fleet nearly broke through.',
-            'A hard-fought loss — the next convoy may have the edge.'
-        ],
-        normal: [
-            'The waters were unforgiving today. Review the engagement and try again.',
-            'The fleet came up short, but the campaign continues.'
-        ]
+    close: {
+        easy: 'Whew — that was way too close!',
+        medium: 'One more shot and it\'s a different story.',
+        hard: 'You made me work for that. Respect.'
+    },
+    comeback: {
+        easy: 'I thought I was sunk! Literally!',
+        medium: 'Never count me out.',
+        hard: 'The odds said I was losing. The odds were wrong.'
     }
 };
 
-export function outcomeBucket({ won, playerShipsLeft, aiShipsLeft }) {
-    const winnerShips = won ? playerShipsLeft : aiShipsLeft;
-    const loserShips = won ? aiShipsLeft : playerShipsLeft;
-    if (winnerShips <= 1) return 'close';
-    if (loserShips === 0 && winnerShips >= 4) return 'blowout';
-    return 'normal';
+export const AI_LOSS_LINES = {
+    blowout: {
+        easy: "You're really good at this!",
+        medium: 'Okay. That was embarrassing.',
+        hard: 'Recalculating... everything.'
+    },
+    close: {
+        easy: 'So close! Rematch?',
+        medium: 'One shot. ONE shot away.',
+        hard: "The math was on my side. Chaos wasn't."
+    }
+};
+
+export const WILDCARD_LINES = [
+    "Cry 'Havoc!' and let slip the dogs of war. — Shakespeare, Julius Caesar",
+    'Give me liberty, or give me death! — Patrick Henry',
+    'All warfare is based on deception. — Sun Tzu, The Art of War',
+    "Nuts! — Gen. McAuliffe's reply at Bastogne, 1944",
+    'Come and take it.',
+    'Fortune favors the bold.',
+    'He who fights and runs away lives to fight another day.'
+];
+
+const recentLines = [];
+const RECENT_LIMIT = 5;
+
+export function outcomeBucket({ won, playerShipsLeft, aiShipsLeft, aiWasBehind }) {
+    if (won) return playerShipsLeft >= 4 ? 'blowout' : 'close';
+    if (aiWasBehind) return 'comeback';
+    return aiShipsLeft >= 4 ? 'blowout' : 'close';
 }
 
-export function personalityLine(context, rng = Math.random) {
-    const outcome = context.won ? 'victory' : 'defeat';
+function normalizeTier(difficulty) {
+    return ['easy', 'medium', 'hard'].includes(difficulty) ? difficulty : 'medium';
+}
+
+export function personalityLine(context, options = {}) {
+    const {
+        rng = Math.random,
+        recent = recentLines,
+        wildcardChance = 0.25,
+        remember = true
+    } = options;
+    const tier = normalizeTier(context.difficulty);
     const bucket = outcomeBucket(context);
-    const lines = LINES[outcome][bucket];
-    const index = Math.min(lines.length - 1, Math.floor(rng() * lines.length));
-    return lines[index];
+    const contextualLine = (context.won ? AI_LOSS_LINES : AI_WIN_LINES)[bucket][tier];
+    const pool = rng() < wildcardChance ? WILDCARD_LINES : [contextualLine];
+    const available = pool.filter((line) => !recent.includes(line));
+    const candidates = available.length ? available : pool;
+    const chosen = candidates[Math.min(candidates.length - 1, Math.floor(rng() * candidates.length))];
+
+    if (remember) {
+        recentLines.push(chosen);
+        if (recentLines.length > RECENT_LIMIT) recentLines.shift();
+    }
+    return chosen;
+}
+
+export function resetPersonalityHistory() {
+    recentLines.length = 0;
 }

@@ -176,29 +176,30 @@ and best streak, and a per-difficulty W/L table.
 ## Victory and defeat sequence
 
 When the final shot ends a match, the result is **not** shown instantly: the game
-holds on the final board for ~500ms so the last hit or sink animation registers,
+holds on the final board for ~1 second so the last hit or sink animation registers,
 then fades in a modal **over the still-visible final board** (the board is not
 replaced by a separate screen).
 
 - **Victory** plays the sink/break-apart animation on the last enemy ship and a
   win fanfare, then animates the awarded points **ticking up** from zero rather
-  than snapping to the final number, alongside a contextual victory line from the
-  AI's personality (blowout vs. hard-fought vs. normal).
+  than snapping to the final number, adds a brief sparkle celebration, and shows
+  a tiered contextual line from the AI's personality. Lines cover blowouts,
+  close games, comebacks, and occasional historical wildcard quotes.
 - **Defeat** applies a slower, desaturated transition to the board behind the
   modal while keeping the modal card itself full-color and readable, and shows a
   sportsmanlike (non-gloating) defeat line and `No points`.
 
-Both modals offer **View Replay** (primary) — which opens the animated shot
-replay below and starts autoplay — and **Play Again** (secondary), which returns
-to ship placement. The contextual lines come from `src/personality.js` and the
-animations reuse the existing sink, audio, and replay systems. The counter and
-transition respect `prefers-reduced-motion`.
+Both modals offer **Post Game Stats** (primary label; it still opens the animated
+shot replay below and starts autoplay) and **Play Again** (secondary), which
+returns to ship placement. The contextual lines come from `src/personality.js`
+and the animations reuse the existing sink, audio, and replay systems. The
+counter, sparkle, and transition respect `prefers-reduced-motion`.
 
 ## Shot replay
 
-The **View Replay** button on the victory/defeat modal opens the shot replay and
+The **Post Game Stats** button on the victory/defeat modal opens the shot replay and
 steps through your shots move by move (the game-over screen's other button is
-**See Game Stats**). Each frame redraws the Hard AI probability heatmap as it stood before
+**Your Lifetime Stats**). Each frame redraws the Hard AI probability heatmap as it stood before
 that shot, marks your chosen cell and the optimal cell (★), and shows the turn,
 your cell, hit/miss result, and percentage of optimal in the caption.
 Autoplay pauses noticeably longer on the three biggest-mistake turns, matching
