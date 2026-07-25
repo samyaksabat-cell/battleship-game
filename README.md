@@ -19,6 +19,8 @@ three selectable difficulty tiers.
 - **Three AI difficulty tiers** (selectable on the setup screen)
 - **"Show AI reasoning"** heatmap of the Hard AI's probability map
 - **Post-game analysis** grading every shot you fired
+- **Local points and streaks** with a personal stats screen
+- **Animated post-game replay** of your shot history and biggest mistakes
 - **Win/lose screens** with "Play Again" button
 - **Responsive design** for different screen sizes
 
@@ -77,6 +79,43 @@ moment. The game-over screen shows:
 - **Biggest missed opportunities** - the three turns with the largest gap between
   your cell and the optimal one, with the cell you should have fired at.
 
+## Points and streaks
+
+Wins award points based on the selected difficulty:
+
+| Difficulty | Base points |
+| --- | ---: |
+| Easy | 2 |
+| Medium | 5 |
+| Hard | 10 |
+
+Losses score 0 points. Consecutive wins multiply the base points by
+`1 + 0.5 × (streak − 1)`, capped at ×3. Points are rounded after applying the
+multiplier. The multiplier for wins 1 through 5+ is ×1.0, ×1.5, ×2.0, ×2.5,
+and ×3.0.
+
+For example:
+
+- Hard 2nd straight win: `10 × 1.5 = 15` points
+- Easy 3rd straight win: `2 × 2.0 = 4` points
+- Hard 5th+ straight win: `10 × 3.0 = 30` points
+
+A loss resets the current streak to 0, but preserves the best streak. Stats
+persist in `localStorage` under `battleship-stats-v1`, per browser/device with no
+backend. The **View Stats** button on the setup and game-over screens opens a
+stats screen showing total points, games played, wins/losses, win rate, current
+and best streak, and a per-difficulty W/L table.
+
+## Shot replay
+
+The **Watch Replay** button on the game-over screen steps through your shots move
+by move. Each frame redraws the Hard AI probability heatmap as it stood before
+that shot, marks your chosen cell and the optimal cell (★), and shows the turn,
+your cell, hit/miss result, and percentage of optimal in the caption.
+Autoplay pauses noticeably longer on the three biggest-mistake turns, matching
+the turns listed in Post-game analysis. Controls are **Prev**, **Play/Pause**,
+**Next**, and **Restart**.
+
 ## How to Play
 
 1. **Place Your Ships**
@@ -117,8 +156,12 @@ npm test
 - `src/board.test.js` - grid, placement and fleet helpers
 - `src/ai/easy.test.js`, `src/ai/medium.test.js`, `src/ai/hard.test.js` - one per tier
 - `src/analysis.test.js` - post-game efficiency and worst-turn detection
+- `src/scoring.test.js` - points, streak multipliers and persisted stats
+- `src/replay.test.js` - chronological replay frames and mistake markers
 - `src/simulation.test.js` - 200 seeded games per tier, asserting Hard beats
   Medium beats Easy on average shots
+
+The suite currently contains 41 tests.
 
 `test.html` additionally runs a handful of the same checks straight in the
 browser (serve it over HTTP as above).
@@ -144,8 +187,8 @@ ES module imports work as-is - no bundler required.
 ## Files
 
 - `index.html` - Main game structure
-- `style.css` - Game styling, heatmap scale and analysis screen
-- `game.js` - DOM wiring: setup, turn loop, heatmap rendering, analysis rendering
+- `style.css` - Game styling, heatmap scale, analysis, stats and replay screens
+- `game.js` - DOM wiring: setup, turn loop, heatmap, analysis, stats and replay rendering
 - `src/constants.js` - Grid size and ship definitions
 - `src/board.js` - Pure grid/placement helpers (`canPlaceShip`, `placeShip`, `getAdjacentCells`, ...)
 - `src/rng.js` - Seeded PRNG for deterministic tests and simulations
@@ -153,6 +196,8 @@ ES module imports work as-is - no bundler required.
 - `src/ai/easy.js`, `src/ai/medium.js`, `src/ai/hard.js` - The three difficulty tiers
 - `src/ai/index.js` - `createAI(difficulty, rng)` wrapper used by the game
 - `src/analysis.js` - Post-game shot grading
+- `src/scoring.js` - LocalStorage-backed points and streaks
+- `src/replay.js` - Post-game replay frame builder
 - `src/simulation.js` - Headless games used by the difficulty simulations
 - `test.html` - In-browser smoke tests
 - `manual-test.html` - Manual testing guide

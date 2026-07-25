@@ -82,6 +82,18 @@ describe('post-game analysis', () => {
         expect(turns[1].playerScore).toBe(0);
     });
 
+    it('includes the probability map for each turn when requested', () => {
+        const shots = [
+            { row: 4, col: 4, hit: true },
+            { row: 4, col: 5, hit: false }
+        ];
+        const { turns } = analyzeShots(shots, { includeMap: true });
+        expect(turns.every((turn) =>
+            turn.map.length === 10 && turn.map.every((row) => row.length === 10)
+        )).toBe(true);
+        expect(turns[0].map).not.toEqual(turns[1].map);
+    });
+
     it('formats cells as battleship coordinates', () => {
         expect(formatCell({ row: 0, col: 0 })).toBe('A1');
         expect(formatCell({ row: 9, col: 9 })).toBe('J10');
