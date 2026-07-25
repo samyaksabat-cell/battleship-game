@@ -89,6 +89,37 @@ normal dwell and ~2600ms on the three biggest-mistake turns; the caption emphasi
 the final frame; Next is disabled there. Confirm exact dwell times from a recording rather than timing
 loosely.
 
+## Victory/defeat end sequences (personality lines, sparkles, hold)
+
+The end-game flow lives in `game.js` (`checkGameOver` → `setTimeout(..., 1000)` → `revealEndGameModal`)
+and `src/personality.js`. Things to verify and how:
+
+- **~1s hold before the modal.** On the game-ending shot the board stays visible with `Ships: 0` and no
+  modal for ~1s, then the modal appears. Capture it by firing the winning shot, then `wait ~1.2s` and
+  screenshot — you catch the hold (final board, no modal); a second screenshot ~1s later catches the modal.
+  For a *victory* you fire the killing shot yourself, so isolate it: reduce the last enemy ship to a single
+  unfired cell first, then fire that one cell so the win (and its animation) triggers on a known click. For a
+  *defeat* the killing shot is the AI's, so fire single shots once you are at `Your Ships: 1` and watch for
+  the hold after each.
+- **Personality line is from the NEW pools.** The message must be one of the context×tier lines in
+  `AI_WIN_LINES`/`AI_LOSS_LINES` or the `WILDCARD_LINES` — never an old convoy-narrator line like
+  "A decisive convoy victory…". Player victory selects `AI_LOSS_LINES` (AI lost), player defeat selects
+  `AI_WIN_LINES` (AI won). Exact bucket/tier can't be forced by blind play (bucket depends on ships left /
+  comeback flag and there's a ~25% wildcard chance), so the falsifiable assertion is pool membership, which a
+  pre-change build could not satisfy.
+- **Victory sparkles.** `triggerVictoryCelebration()` appends 30 `<div class="sparkle">` to `#game-screen`
+  with an ~1.1s animation, then removes them. They are transient and positional, so they do NOT appear in the
+  stripped/annotated DOM dump — you must catch them in a screenshot. Screenshot at ~1.3s after the winning
+  click (0.3s into the sparkle animation, near peak opacity) to reliably capture gold particles across the
+  screen. Suppressed under `prefers-reduced-motion` and `pointer-events: none` so they never block the modal.
+- **Defeat has no sparkles + desaturated board.** The defeat path darkens/desaturates the board behind a
+  full-color, readable modal and creates zero sparkles. Confirm `grep -c sparkle` on the captured page = 0 for
+  defeat, and verify the modal text/buttons are full color (only the *board* is filtered — a regression once
+  grayed the modal too).
+- **Button labels.** The modal primary button reads **Post Game Stats** (opens the replay); the game-over
+  analysis screen button reads **Your Lifetime Stats** (opens the stats screen). Both kept their old IDs
+  (`#end-view-replay-btn`, `#watch-replay-btn`), so assert on visible text, not the ID.
+
 ## Gotchas seen before (may already be fixed)
 
 - CSS utility classes can lose the cascade: a generic `.hidden { display: none }` declared before a component
