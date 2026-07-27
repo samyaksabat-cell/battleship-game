@@ -65,6 +65,48 @@ cut off.
 **Fix**: Responsive rules for `#replay-grid` in `style.css` use `aspect-ratio` with
 `minmax(0, 1fr)` columns and rows so all ten columns fit (commit `868edcd`).
 
+## 7. Victory sparkles rendered over the end-game modal
+
+**Description**: The victory sparkle effect appeared on top of the end-game modal, obscuring the
+result panel.
+
+**Root cause**: The `.sparkle` rule used `z-index: 11`, stacking it above the modal layer.
+
+**Fix**: Lowered `.sparkle` to `z-index: 9` in `style.css` so sparkles stay behind the modal
+(commit `f5f643a`).
+
+## 8. `defeat-transition` class leaking into subsequent games
+
+**Description**: After losing a game, the defeat styling persisted into the next game.
+
+**Root cause**: `checkGameOver()` added the `defeat-transition` class and nothing ever removed it.
+
+**Fix**: `game.js` now applies the class in `revealEndGameModal()` only when the player loses, and
+`startGame()` clears it with `gameScreen.classList.remove('defeat-transition')` (commit `f5f643a`).
+
+## 9. AI personality line history recorded in the wrong array
+
+**Description**: Caller-supplied line history never deduplicated, and the module's own history was
+mutated unexpectedly.
+
+**Root cause**: `personalityLine()` in `src/personality.js` pushed the chosen line onto the
+module-level `recentLines` array instead of the caller-supplied `recent` array.
+
+**Fix**: `personalityLine()` pushes to and caps `recent`, so callers get correct deduplication
+(commit `f5f643a`).
+
+## 10. Personality selection could yield an undefined line, and a truncated quote
+
+**Description**: An empty outcome bucket (e.g. an AI "comeback" bucket that does not exist) produced
+an undefined personality line, and the McAuliffe Bastogne wildcard quote was truncated.
+
+**Root cause**: Selection assumed a contextual line always existed for the outcome bucket, and the
+wildcard quote text was incomplete.
+
+**Fix**: `src/personality.js` adds a wildcard fallback
+(`useWildcard = rng() < wildcardChance || !contextualLine`) and restores the full McAuliffe quote.
+Covered by new tests in `src/personality.test.js` (commit `f5f643a`).
+
 ## Environment note: git unavailable in the original build environment
 
 The machine used for the initial development had no working git (macOS reported
