@@ -71,6 +71,53 @@ describe('personality lines', () => {
         });
     });
 
+    it('records the chosen line in the caller-supplied history, not the module history', () => {
+        resetPersonalityHistory();
+        const recent = [];
+        const chosen = personalityLine(
+            { won: true, playerShipsLeft: 1, aiShipsLeft: 0, difficulty: 'easy' },
+            { wildcardChance: 1, recent, rng: fixed(0) }
+        );
+        expect(chosen).toBe(WILDCARD_LINES[0]);
+        expect(recent).toEqual([WILDCARD_LINES[0]]);
+
+        // The module-level history must be untouched by a caller-supplied `recent`,
+        // so the first wildcard is still available (the old bug pushed to both).
+        expect(personalityLine(
+            { won: true, playerShipsLeft: 1, aiShipsLeft: 0, difficulty: 'easy' },
+            { wildcardChance: 1, remember: false, rng: fixed(0) }
+        )).toBe(WILDCARD_LINES[0]);
+    });
+
+    it('caps the caller-supplied history at the recent limit', () => {
+        const recent = [];
+        for (let index = 0; index < 12; index++) {
+            personalityLine(
+                { won: true, playerShipsLeft: 1, aiShipsLeft: 0, difficulty: 'easy' },
+                { wildcardChance: 1, recent, rng: () => index / 12 }
+            );
+        }
+        expect(recent.length).toBeLessThanOrEqual(5);
+    });
+
+    it('falls back to a wildcard when a bucket has no line for the outcome', () => {
+        // A player win can never be a "comeback" for the AI, so AI_LOSS_LINES has no
+        // comeback bucket; selection must not throw if that pairing is ever reached.
+        expect(AI_LOSS_LINES.comeback).toBeUndefined();
+        const line = personalityLine(
+            { won: true, playerShipsLeft: 4, aiShipsLeft: 0, difficulty: 'easy', aiWasBehind: true },
+            { wildcardChance: 0, remember: false, recent: [], rng: fixed(0) }
+        );
+        expect(line).toEqual(expect.any(String));
+        expect(line.length).toBeGreaterThan(0);
+    });
+
+    it('quotes McAuliffe\'s Bastogne reply in full', () => {
+        expect(WILDCARD_LINES).toContain(
+            "Nuts! — Gen. McAuliffe's real reply when the Germans demanded surrender at Bastogne, 1944"
+        );
+    });
+
     it('resets remembered history', () => {
         resetPersonalityHistory();
         personalityLine(
