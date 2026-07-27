@@ -258,12 +258,14 @@ npm test
 - `src/replay.test.js` - chronological replay frames and mistake markers
 - `src/maps.test.js` - map bounds, islands, and deterministic fog
 - `src/daily.test.js` - date-seeded daily map and fleet determinism
+- `src/personality.test.js` - contextual AI lines, recent-line history, and wildcard fallback
+- `src/profile.test.js` - player profile creation, persistence, and reset
 - `src/simulation.test.js` - 200 seeded games per tier, asserting Hard beats
   Medium beats Easy on average shots
 - `src/board.test.js`, `src/ai/*test.js`, and `src/scoring.test.js` also cover
   blocked-cell, island-placement, and raw-scoring behavior
 
-The suite currently contains 52 tests.
+The suite currently contains 67 tests.
 
 `test.html` additionally runs a handful of the same checks straight in the
 browser (serve it over HTTP as above).
@@ -303,9 +305,13 @@ ES module imports work as-is - no bundler required.
 - `src/maps.js` - Pure map, island, and drifting-fog definitions
 - `src/daily.js` - Deterministic date-seeded daily challenge generator
 - `src/audio.js` - Safe Web Audio SFX engine and persisted mute state
+- `src/personality.js` - Contextual victory/defeat lines and wildcard quotes
+- `src/profile.js` - LocalStorage-backed player profile
 - `src/simulation.js` - Headless games used by the difficulty simulations
 - `test.html` - In-browser smoke tests
 - `manual-test.html` - Manual testing guide
+- `BUGFIXES.md` - Summary of bugs found during development and how they were fixed
+- `DEBUG.md` - Original debugging notes
 
 ## License
 
